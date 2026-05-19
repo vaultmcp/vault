@@ -4,12 +4,14 @@
   "description": "MCP prompt-injection scanning proxy",
   "type": "module",
   "bin": {
-    "mcp-proxy": "./dist/index.js"
+    "mcp-proxy": "./dist/index.js",
+    "vault-audit": "./dist/audit-view.js"
   },
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts",
+    "view-audit": "tsx src/cli/audit-view.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "bench:l3": "tsx bench/layer3-floor.ts"

@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '10'
+
+jobs:
+  ts-packages:
+    name: typescript packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: build the layer 2 corpus (proxy tests depend on it)
+        run: pnpm --filter @vault/corpus build
+
+      - name: typecheck — proxy + collector + eval + demo-site + contracts
+        run: pnpm -r typecheck
+
+      - name: test — workspace
+        run: pnpm -r test
+
+      - name: build — proxy + collector
+        run: |
+          pnpm --filter @vault/mcp-proxy build
+          pnpm --filter @vault/collector build
+
+      - name: bundle size check
+        run: |
+          PROXY_SIZE=$(stat -c%s packages/proxy/dist/index.js)
+          COLLECTOR_SIZE=$(stat -c%s packages/collector/dist/index.js)
+          echo "proxy bin: $PROXY_SIZE bytes"
+          echo "collector bin: $COLLECTOR_SIZE bytes"
+          # Hard ceilings — fail if we accidentally pull in a giant dep.
+          if [ "$PROXY_SIZE" -gt 200000 ]; then
+            echo "proxy bin exceeded 200KB ceiling"
+            exit 1
+          fi
+          if [ "$COLLECTOR_SIZE" -gt 50000 ]; then
+            echo "collector bin exceeded 50KB ceiling"
+            exit 1
+          fi
+
+  contracts:
+    name: foundry contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: forge fmt check
+        working-directory: packages/contracts
+        run: forge fmt --check
+        continue-on-error: true # informational for now; flip to required once codebase is stable
+
+      - name: forge build
+        working-directory: packages/contracts
+        run: forge build --sizes
+
+      - name: forge test
+        working-directory: packages/contracts
+        run: forge test -vv
+
+      - name: gas snapshot
+        working-directory: packages/contracts
+        run: forge test --gas-report 2>&1 | tail -40
