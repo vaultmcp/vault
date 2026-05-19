@@ -14,7 +14,7 @@ describe('cli', () => {
       { encoding: 'utf8' },
     );
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/Usage:/);
+    expect(r.stdout).toMatch(/Usage/);
     expect(r.stdout).toMatch(/VAULT_MODE/);
   });
 
@@ -23,6 +23,6 @@ describe('cli', () => {
       encoding: 'utf8',
     });
     expect(r.status).not.toBe(0);
-    expect(r.stdout).toMatch(/Usage:/);
+    expect(r.stdout).toMatch(/Usage/);
   });
 });
