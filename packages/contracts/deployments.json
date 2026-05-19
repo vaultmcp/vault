@@ -1,0 +1,12 @@
+{
+  "base-sepolia": {
+    "eas": "0x4200000000000000000000000000000000000021",
+    "schemaRegistry": "0x4200000000000000000000000000000000000020",
+    "schemas": {
+      "scanReceipt": "0xc1d5e8e4f62f3652366e7c7b75d8d77ff8ca59e85f307935d4bffbe61c68f9ec",
+      "threatRecord": "0xae2b5da24401f0a261dd6cfbbc300fddafcf47692c71d968e0942cba2177dd65"
+    },
+    "vaultReputation": "0x3A977E4D8BA43367cc41BB4695feFF4615fec189",
+    "deployedAt": "2026-05-19T22:56:42.320Z"
+  }
+}

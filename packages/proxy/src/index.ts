@@ -77,10 +77,10 @@ On-chain attestation (env, default off)
   VAULT_ATTEST                     1 to enable EAS attestations on Base
   VAULT_BASE_RPC_URL               default: https://mainnet.base.org
   VAULT_ATTESTER_PRIVATE_KEY       hot wallet (fund with ~0.05 ETH on Base)
-  VAULT_EAS_ADDRESS                EAS contract on Base
-  VAULT_SCAN_RECEIPT_SCHEMA        registered ScanReceipt schema UID
-  VAULT_THREAT_RECORD_SCHEMA       registered ThreatRecord schema UID
-  VAULT_REPUTATION_CONTRACT        deployed VaultReputation address
+  VAULT_EAS_ADDRESS                EAS contract (default: OP-stack predeploy)
+  VAULT_SCAN_RECEIPT_SCHEMA        ScanReceipt schema UID (Sepolia default built-in)
+  VAULT_THREAT_RECORD_SCHEMA       ThreatRecord schema UID (Sepolia default built-in)
+  VAULT_REPUTATION_CONTRACT        VaultReputation address (Sepolia default built-in)
   VAULT_ATTEST_SAMPLE_RATE_L1L2    sampling for clean L1/L2 (default 0.1)
 
 Privacy: see PRIVACY.md. SHA-256 hashes only — raw content never leaves the proxy.

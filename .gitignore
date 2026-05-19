@@ -15,9 +15,6 @@ broadcast/
 *.pem
 *.key
 
-# Per-environment deployment records. The example file is committed (public addresses only);
-# the real file is local-only until we publish the mainnet block in Sprint 2.
-packages/contracts/deployments.json
 
 # Audit logs (operator-only, never commit)
 *.audit.jsonl

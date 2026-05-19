@@ -9,6 +9,23 @@ import { createHash } from 'node:crypto';
 
 export const runtime = 'nodejs';
 
+// Simple in-process token-bucket rate limiter: 10 requests per 60s per IP.
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 10;
+const buckets = new Map<string, { count: number; reset: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  let bucket = buckets.get(ip);
+  if (!bucket || now >= bucket.reset) {
+    bucket = { count: 0, reset: now + RATE_WINDOW_MS };
+    buckets.set(ip, bucket);
+  }
+  if (bucket.count >= RATE_LIMIT) return false;
+  bucket.count++;
+  return true;
+}
+
 // Inline copy of the Layer-1 patterns from packages/proxy/src/detection/layer1-heuristics.ts.
 // Kept in sync manually — if you change the proxy regexes, mirror them here.
 const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
@@ -24,6 +41,8 @@ const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;
 const BASE64_RE = /[A-Za-z0-9+/]{40,}={0,2}/;
 const HTML_COMMENT_RE =
   /<!--[\s\S]*?\b(?:ignore|disregard|forget|override|bypass|reveal|exfiltrate|system)\b[\s\S]*?-->/i;
+const MD_LINK_PROMPT_ANCHOR_RE =
+  /\[[^\]]*\b(?:ignore|bypass|override|jailbreak|disregard|click\s+here\s+to)\b[^\]]*\]\([^)]+\)/i;
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g;
 
 interface Layer1Result {
@@ -52,6 +71,11 @@ function runLayer1(text: string): Layer1Result {
     patterns.push('html-comment-injection');
     if (verdict === 'clean') verdict = 'malicious';
     confidence = Math.max(confidence, 0.75);
+  }
+  if (MD_LINK_PROMPT_ANCHOR_RE.test(text)) {
+    patterns.push('markdown-link-prompt-anchor');
+    if (verdict === 'clean') verdict = 'malicious';
+    confidence = Math.max(confidence, 0.7);
   }
   const zw = text.match(ZERO_WIDTH_RE);
   if (zw && text.length > 0 && zw.length / text.length > 0.02) {
@@ -103,6 +127,14 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
+  if (!checkRateLimit(ip)) {
+    return new Response(JSON.stringify({ error: 'rate limited — 10 scans/min per IP' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+    });
+  }
+
   let text = '';
   try {
     const body = (await req.json()) as { text?: unknown };

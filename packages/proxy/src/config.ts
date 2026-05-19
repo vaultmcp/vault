@@ -29,16 +29,33 @@ export function loadConfig(): VaultConfig {
   };
 }
 
+// Deployed Base Sepolia addresses (chain 84532). Used as defaults when the RPC URL points
+// at Base Sepolia and the operator hasn't overridden the schema UIDs manually.
+const SEPOLIA_DEFAULTS = {
+  eas: '0x4200000000000000000000000000000000000021' as Hex,
+  scanReceiptSchema: '0xc1d5e8e4f62f3652366e7c7b75d8d77ff8ca59e85f307935d4bffbe61c68f9ec' as Hex,
+  threatRecordSchema: '0xae2b5da24401f0a261dd6cfbbc300fddafcf47692c71d968e0942cba2177dd65' as Hex,
+  vaultReputation: '0x3A977E4D8BA43367cc41BB4695feFF4615fec189' as Hex,
+} as const;
+
+function isSepolia(rpcUrl: string): boolean {
+  return rpcUrl.includes('sepolia') || rpcUrl.includes('84532');
+}
+
 function loadAttestationConfig(): AttestationConfig {
   const flag = process.env.VAULT_ATTEST?.toLowerCase();
   const enabled = flag === '1' || flag === 'true' || flag === 'on';
   const rpcUrl = process.env.VAULT_BASE_RPC_URL ?? 'https://mainnet.base.org';
   const privateKey = process.env.VAULT_ATTESTER_PRIVATE_KEY as Hex | undefined;
 
-  const eas = process.env.VAULT_EAS_ADDRESS as Hex | undefined;
-  const scanReceiptSchema = process.env.VAULT_SCAN_RECEIPT_SCHEMA as Hex | undefined;
-  const threatRecordSchema = process.env.VAULT_THREAT_RECORD_SCHEMA as Hex | undefined;
-  const vaultReputation = process.env.VAULT_REPUTATION_CONTRACT as Hex | undefined;
+  const defaults = isSepolia(rpcUrl) ? SEPOLIA_DEFAULTS : null;
+  const eas = (process.env.VAULT_EAS_ADDRESS as Hex | undefined) ?? defaults?.eas;
+  const scanReceiptSchema =
+    (process.env.VAULT_SCAN_RECEIPT_SCHEMA as Hex | undefined) ?? defaults?.scanReceiptSchema;
+  const threatRecordSchema =
+    (process.env.VAULT_THREAT_RECORD_SCHEMA as Hex | undefined) ?? defaults?.threatRecordSchema;
+  const vaultReputation =
+    (process.env.VAULT_REPUTATION_CONTRACT as Hex | undefined) ?? defaults?.vaultReputation;
 
   const addresses =
     eas && scanReceiptSchema && threatRecordSchema
