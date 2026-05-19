@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #050505;
+  color: #e8e8e8;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #00ff66;
+  color: #050505;
+}
+
+.scan-line {
+  background-image: linear-gradient(transparent 50%, rgba(0, 255, 102, 0.03) 50%);
+  background-size: 100% 4px;
+}
