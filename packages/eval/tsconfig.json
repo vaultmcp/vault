@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "outDir": "dist",
+    "declaration": false,
+    "sourceMap": false,
+    "paths": {
+      "@vault/mcp-proxy/detection/*": ["../proxy/src/detection/*"]
+    }
+  },
+  "include": ["src", "test", "../proxy/src/detection"]
+}
