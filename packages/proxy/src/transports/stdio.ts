@@ -1,13 +1,10 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { loadConfig, type VaultMode } from '../config.js';
-import { runPipeline } from '../detection/pipeline.js';
-import { rankVerdict, type DetectionResult, type Verdict } from '../detection/types.js';
+import { loadConfig } from '../config.js';
 import {
   TaintStore,
   decideCapability,
   type CapabilityConfig,
-  type GateDecision,
 } from '../capability/index.js';
 import {
   ManifestChecker,
@@ -31,133 +28,14 @@ import {
   type AttestationClient,
   type ScanReporter,
 } from '../attestation/index.js';
-
-interface JsonRpcMessage {
-  jsonrpc?: '2.0';
-  id?: string | number;
-  method?: string;
-  params?: unknown;
-  result?: unknown;
-  error?: unknown;
-}
-
-interface ContentItem {
-  type: string;
-  text?: string;
-  [k: string]: unknown;
-}
-
-interface ToolCallResult {
-  content: ContentItem[];
-  isError?: boolean;
-  [k: string]: unknown;
-}
-
-function tryParse(line: string): JsonRpcMessage | null {
-  try {
-    return JSON.parse(line) as JsonRpcMessage;
-  } catch {
-    return null;
-  }
-}
-
-function isToolCallResponse(
-  msg: JsonRpcMessage,
-): msg is JsonRpcMessage & { result: ToolCallResult } {
-  if (!msg.result || typeof msg.result !== 'object') return false;
-  const r = msg.result as Partial<ToolCallResult>;
-  return Array.isArray(r.content);
-}
-
-function buildBlockedItem(toolName: string, r: DetectionResult): ContentItem {
-  return {
-    type: 'text',
-    text:
-      `[VAULT_BLOCKED] Response from tool '${toolName}' was flagged as potential prompt injection. ` +
-      `Verdict: ${r.verdict}. Reasoning: ${r.reasoning}. ` +
-      `Original content withheld. To override, set VAULT_MODE=warn.`,
-  };
-}
-
-function buildWarningItem(toolName: string, r: DetectionResult): ContentItem {
-  return {
-    type: 'text',
-    text:
-      `[VAULT_WARNING] Tool '${toolName}' response flagged (${r.verdict}). ` +
-      `Reasoning: ${r.reasoning}. Original content follows.`,
-  };
-}
-
-function buildCapabilityBlockedResponse(
-  id: string | number,
-  toolName: string,
-  decision: GateDecision,
-): JsonRpcMessage {
-  const sources = decision.taintSources?.map((s) => s.toolName).join(', ') ?? 'unknown';
-  return {
-    jsonrpc: '2.0',
-    id,
-    result: {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text:
-            `[VAULT_CAPABILITY_BLOCKED] Refused to invoke '${toolName}'. ${decision.reason}. ` +
-            `Taint source(s): ${sources}. ` +
-            `To override, set VAULT_CAPABILITY_MODE=warn or unset VAULT_CAPABILITY.`,
-        },
-      ],
-    },
-  };
-}
-
-interface InspectionOutcome {
-  mutated: boolean;
-  verdict: Verdict;
-  layer?: number;
-  result: DetectionResult | null;
-  contentHash: string;
-}
-
-async function inspectResponse(
-  msg: JsonRpcMessage & { result: ToolCallResult },
-  toolName: string,
-  mode: VaultMode,
-): Promise<InspectionOutcome> {
-  const items = msg.result.content;
-  let worst: Verdict = 'clean';
-  let worstResult: DetectionResult | null = null;
-
-  const aggText: string[] = [];
-  for (const item of items) {
-    if (item.type !== 'text' || typeof item.text !== 'string') continue;
-    aggText.push(item.text);
-    const r = await runPipeline(item.text, { toolName, mcpMethod: 'tools/call' });
-    if (rankVerdict(r.verdict) > rankVerdict(worst)) {
-      worst = r.verdict;
-      worstResult = r;
-    }
-  }
-
-  const contentHash = sha256Hex(aggText.join('\n'));
-
-  if (worst === 'clean' || !worstResult) {
-    return { mutated: false, verdict: 'clean', result: null, contentHash };
-  }
-  if (mode === 'log') {
-    return { mutated: false, verdict: worst, layer: worstResult.layer, result: worstResult, contentHash };
-  }
-
-  if (mode === 'warn') {
-    msg.result.content = [buildWarningItem(toolName, worstResult), ...items];
-    return { mutated: true, verdict: worst, layer: worstResult.layer, result: worstResult, contentHash };
-  }
-
-  msg.result.content = [buildBlockedItem(toolName, worstResult)];
-  msg.result.isError = true;
-  return { mutated: true, verdict: worst, layer: worstResult.layer, result: worstResult, contentHash };
-}
+import {
+  buildCapabilityBlockedResponse,
+  inspectToolCallResponse,
+  isToolCallResponse,
+  tryParse,
+  type JsonRpcMessage,
+  type ToolCallResult,
+} from './shared.js';
 
 function addResponseToTaint(
   msg: JsonRpcMessage & { result: ToolCallResult },
@@ -280,7 +158,12 @@ export function startProxy(cmd: string, args: string[]): void {
           process.stderr.write(
             `vault: capability-block tool '${name}' (${decision.reason})\n`,
           );
-          const blocked = buildCapabilityBlockedResponse(msg.id, name, decision);
+          const blocked = buildCapabilityBlockedResponse(
+            msg.id,
+            name,
+            decision.reason ?? 'tainted args',
+            (decision.taintSources ?? []).map((s) => s.toolName),
+          );
           toolNameById.delete(msg.id);
           process.stdout.write(JSON.stringify(blocked) + '\n');
           return; // do NOT forward the original call to the child
@@ -345,7 +228,7 @@ export function startProxy(cmd: string, args: string[]): void {
           (msg.id != null ? toolNameById.get(msg.id) : undefined) ?? 'unknown';
         if (msg.id != null) toolNameById.delete(msg.id);
 
-        const outcome = await inspectResponse(msg, toolName, config.mode);
+        const outcome = await inspectToolCallResponse(msg, toolName, config.mode);
         if (outcome.verdict !== 'clean') {
           process.stderr.write(
             `vault: ${outcome.verdict} (L${outcome.layer ?? '?'}) response from '${toolName}' (mode=${config.mode}${outcome.mutated ? ', mutated' : ''})\n`,
