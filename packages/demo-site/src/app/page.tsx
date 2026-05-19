@@ -1,4 +1,5 @@
 import { Hero } from '@/components/Hero';
+import { ScanDemo } from '@/components/ScanDemo';
 import { ThreatFeed } from '@/components/ThreatFeed';
 import { Leaderboard } from '@/components/Leaderboard';
 import { Install } from '@/components/Install';
@@ -10,6 +11,7 @@ export default function Page() {
   return (
     <main>
       <Hero />
+      <ScanDemo />
       <ThreatFeed collectorUrl={collectorUrl} />
       <Leaderboard />
       <Install />
