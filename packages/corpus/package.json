@@ -1,0 +1,31 @@
+{
+  "name": "@vault/corpus",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./patterns": "./injection-patterns.json"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "embeddings.bin",
+    "embeddings-meta.json",
+    "injection-patterns.json"
+  ],
+  "scripts": {
+    "build": "tsx build-embeddings.ts",
+    "test": "echo \"(no tests in corpus)\"",
+    "typecheck": "echo \"(no typecheck in corpus)\""
+  },
+  "devDependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "tsx": "^4.19.0"
+  }
+}

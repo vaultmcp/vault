@@ -1,0 +1,12 @@
+{
+  "name": "vault",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "esbuild", "protobufjs"]
+  }
+}

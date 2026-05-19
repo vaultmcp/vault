@@ -1,0 +1,28 @@
+node_modules/
+dist/
+out/
+cache/
+broadcast/
+*.log
+.DS_Store
+.vitest-cache/
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+
+# Per-environment deployment records. The example file is committed (public addresses only);
+# the real file is local-only until we publish the mainnet block in Sprint 2.
+packages/contracts/deployments.json
+
+# Audit logs (operator-only, never commit)
+*.audit.jsonl
+audit-*.jsonl
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.tmp/

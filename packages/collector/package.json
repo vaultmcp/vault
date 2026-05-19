@@ -1,0 +1,24 @@
+{
+  "name": "@vault/collector",
+  "version": "0.0.1",
+  "description": "Vault telemetry collector — ingests redacted scan events and exposes /feed and /stats",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "vault-collector": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
