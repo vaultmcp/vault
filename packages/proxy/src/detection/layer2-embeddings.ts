@@ -85,7 +85,15 @@ export async function runLayer2(text: string): Promise<DetectionResult> {
     };
   }
 
-  const verdict = matched.severity === 'high' ? 'malicious' : 'suspicious';
+  // FP-tuning rule (2026-05-19, measured): only call a match "malicious" outright when the
+  // embedding distance is small enough that we can be confident. Borderline matches (e.g. tool
+  // documentation that describes filesystem operations near-matching exfiltration corpus entries)
+  // return "suspicious" so the pipeline can escalate to Layer 3 — which is the only thing that can
+  // reliably tell "describing X" from "instructing the agent to do X". Threshold chosen from
+  // distance-probe data: paraphrased real attacks land ~0.21, real FPs land ~0.34.
+  const CONFIDENT_MATCH_DIST = 0.25;
+  const verdict =
+    matched.severity === 'high' && best < CONFIDENT_MATCH_DIST ? 'malicious' : 'suspicious';
   const confidence = Math.min(0.95, 1 - best / threshold);
 
   return {

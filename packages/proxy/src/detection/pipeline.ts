@@ -36,29 +36,44 @@ export async function runPipeline(text: string, context?: JudgeContext): Promise
     };
   }
 
-  // Layer 2 caught something — that's our answer.
-  if (l2.verdict !== 'clean') return l2;
+  // Layer 2 is confident this is malicious (near-corpus match) — done. The "suspicious"
+  // case is treated as needing L3 disambiguation to reduce false positives on content
+  // that is semantically close to attack categories but actually benign (e.g. tool docs
+  // that describe filesystem operations getting near-matched to exfiltration entries).
+  if (l2.verdict === 'malicious') return l2;
 
-  // Both layers say clean. Decide whether the case is uncertain enough to spend a judge call.
+  // Decide whether to run L3. Trigger when L2 is suspicious OR L2 is clean-but-borderline.
   const threshold = readL2Threshold();
   const distance = l2.distance ?? Infinity;
+  const isSuspicious = l2.verdict === 'suspicious';
   const inUncertainZone = distance < threshold + L2_UNCERTAIN_MARGIN;
 
-  if (!inUncertainZone) {
-    // Clearly clean — don't waste an API call.
+  if (!isSuspicious && !inUncertainZone) {
+    // Clearly clean. Don't waste an API call.
     if (l1.verdict !== 'clean') return { ...l1, layer: 1 };
     return l2;
   }
 
-  // Layer 3 (only fires in the ambiguity zone and only if a client is configured).
+  // Run Layer 3 to disambiguate.
   try {
     return await runLayer3(text, context);
   } catch (err) {
-    // No key configured, timeout, or API error — fall back to L2.
     if (!(err instanceof Layer3Unavailable)) {
       process.stderr.write(
         `vault: layer-3 failed (${err instanceof Error ? err.message : String(err)}) — falling back to layer-2\n`,
       );
+    }
+    // L3 unavailable — fall back conservatively. We treat a Layer-2 "suspicious" verdict
+    // WITHOUT an L3 second opinion as not-blockable, because the whole point of marking it
+    // suspicious (rather than malicious) is that we weren't confident enough alone. This
+    // is the FP-protection knob: operators who want stricter behavior set ANTHROPIC_API_KEY
+    // (or equivalent) and L3 disambiguates.
+    if (isSuspicious) {
+      return {
+        ...l2,
+        verdict: 'clean',
+        reasoning: `${l2.reasoning} — demoted to clean: layer-3 unavailable to disambiguate`,
+      };
     }
     if (l1.verdict !== 'clean') return { ...l1, layer: 1 };
     return l2;
