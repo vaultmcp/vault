@@ -3,6 +3,8 @@ dist/
 out/
 cache/
 broadcast/
+.next/
+*.tsbuildinfo
 *.log
 .DS_Store
 .vitest-cache/
