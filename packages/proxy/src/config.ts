@@ -2,6 +2,8 @@ import type { CapabilityConfig, CapabilityMode } from './capability/index.js';
 import type { ManifestConfig, ManifestMode } from './manifest/index.js';
 import type { TelemetryConfig } from './telemetry/index.js';
 import type { AuditConfig } from './audit/index.js';
+import type { AttestationConfig } from './attestation/index.js';
+import type { Hex } from 'viem';
 
 export type VaultMode = 'block' | 'warn' | 'log';
 
@@ -11,6 +13,7 @@ export interface VaultConfig {
   manifest: ManifestConfig;
   telemetry: TelemetryConfig;
   audit: AuditConfig;
+  attestation: AttestationConfig;
 }
 
 export function loadConfig(): VaultConfig {
@@ -22,6 +25,41 @@ export function loadConfig(): VaultConfig {
     manifest: loadManifestConfig(),
     telemetry: loadTelemetryConfig(),
     audit: loadAuditConfig(),
+    attestation: loadAttestationConfig(),
+  };
+}
+
+function loadAttestationConfig(): AttestationConfig {
+  const flag = process.env.VAULT_ATTEST?.toLowerCase();
+  const enabled = flag === '1' || flag === 'true' || flag === 'on';
+  const rpcUrl = process.env.VAULT_BASE_RPC_URL ?? 'https://mainnet.base.org';
+  const privateKey = process.env.VAULT_ATTESTER_PRIVATE_KEY as Hex | undefined;
+
+  const eas = process.env.VAULT_EAS_ADDRESS as Hex | undefined;
+  const scanReceiptSchema = process.env.VAULT_SCAN_RECEIPT_SCHEMA as Hex | undefined;
+  const threatRecordSchema = process.env.VAULT_THREAT_RECORD_SCHEMA as Hex | undefined;
+  const vaultReputation = process.env.VAULT_REPUTATION_CONTRACT as Hex | undefined;
+
+  const addresses =
+    eas && scanReceiptSchema && threatRecordSchema
+      ? { eas, scanReceiptSchema, threatRecordSchema, vaultReputation }
+      : undefined;
+
+  const batchSize = positiveInt(process.env.VAULT_ATTEST_BATCH, 50);
+  const flushIntervalMs = positiveInt(process.env.VAULT_ATTEST_FLUSH_MS, 5000);
+  const sampleRaw = process.env.VAULT_ATTEST_SAMPLE_RATE_L1L2;
+  const sampleParsed = sampleRaw ? Number.parseFloat(sampleRaw) : NaN;
+  const sampleRateL1L2 =
+    Number.isFinite(sampleParsed) && sampleParsed >= 0 && sampleParsed <= 1 ? sampleParsed : 0.1;
+
+  return {
+    enabled,
+    rpcUrl,
+    privateKey,
+    addresses,
+    batchSize,
+    flushIntervalMs,
+    sampleRateL1L2,
   };
 }
 

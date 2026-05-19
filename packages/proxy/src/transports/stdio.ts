@@ -25,6 +25,12 @@ import {
   preview,
   type AuditLogger,
 } from '../audit/index.js';
+import {
+  createAttestationClient,
+  createScanReporter,
+  type AttestationClient,
+  type ScanReporter,
+} from '../attestation/index.js';
 
 interface JsonRpcMessage {
   jsonrpc?: '2.0';
@@ -198,6 +204,11 @@ export function startProxy(cmd: string, args: string[]): void {
     config.manifest.mode !== 'off' ? new ManifestChecker(cmd, args, config.manifest) : null;
   const telemetry: TelemetryReporter = createReporter(config.telemetry);
   const audit: AuditLogger = createAuditLogger(config.audit);
+  const attestClient: AttestationClient = createAttestationClient({ config: config.attestation });
+  const scanReporter: ScanReporter = createScanReporter({
+    client: attestClient,
+    sampleRateL1L2: config.attestation.sampleRateL1L2,
+  });
 
   if (config.telemetry.bannerOnStart) {
     process.stderr.write(
@@ -368,6 +379,16 @@ export function startProxy(cmd: string, args: string[]): void {
             contentPreview: preview(previewText),
           });
         }
+        if (scanReporter.enabled) {
+          scanReporter.report({
+            toolName,
+            mcpServerUrl: `stdio:${cmd}`,
+            contentHash: outcome.contentHash,
+            result: outcome.result,
+            verdict: outcome.verdict,
+            layer: outcome.layer ?? null,
+          });
+        }
         if (config.capability.enabled) addResponseToTaint(msg, toolName, taint);
       }
 
@@ -379,6 +400,7 @@ export function startProxy(cmd: string, args: string[]): void {
     process.on(sig, () => {
       void telemetry.shutdown();
       void audit.shutdown();
+      void attestClient.shutdown();
       if (!child.killed) child.kill(sig);
     });
   }
