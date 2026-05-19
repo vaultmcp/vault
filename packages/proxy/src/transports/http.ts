@@ -1,8 +1,9 @@
 /// HTTP / Streamable-HTTP MCP transport.
-/// Listens locally, forwards every POST to a configured upstream MCP URL, scans the response
-/// (when JSON), and returns to the caller. Same detection pipeline + capability gate + manifest
-/// checker + telemetry as the stdio path. SSE streaming responses currently pass through
-/// unscanned with a stderr warning — adding scanned streaming is the v0.5 follow-up.
+/// Listens locally, forwards every POST to a configured upstream MCP URL, scans responses with
+/// the same detection pipeline + capability gate + manifest checker + telemetry as the stdio
+/// path. Both single-shot JSON responses and Server-Sent Event streams are scanned: SSE events
+/// are parsed at event boundaries, JSON-RPC tool-call responses are inspected, mutated if needed,
+/// then re-serialized into the SSE stream.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { loadConfig } from '../config.js';
@@ -34,6 +35,7 @@ import {
   tryParse,
   type JsonRpcMessage,
 } from './shared.js';
+import { streamScanSse } from './sse-scan.js';
 
 export interface HttpProxyOptions {
   upstream: string;
@@ -200,11 +202,8 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
     }
 
     const upstreamCT = upstreamResp.headers.get('content-type') ?? '';
-    // SSE streaming: not yet scanned. Stream through and warn.
+    // SSE streaming: parse each event and scan tool-call responses inline.
     if (upstreamCT.includes('text/event-stream')) {
-      process.stderr.write(
-        'vault[http]: SSE response — passing through unscanned (streaming inspection is v0.5)\n',
-      );
       const headers: Record<string, string> = {};
       upstreamResp.headers.forEach((v, k) => {
         if (!HOP_BY_HOP.has(k.toLowerCase())) headers[k] = v;
@@ -214,16 +213,73 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
         res.end();
         return;
       }
-      const reader = upstreamResp.body.getReader();
-      const pump = async (): Promise<void> => {
-        for (;;) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (value) res.write(Buffer.from(value));
-        }
-        res.end();
-      };
-      void pump();
+      try {
+        await streamScanSse(
+          upstreamResp.body,
+          {
+            toolName,
+            mode: config.mode,
+            async onScanned(scannedMsg, scannedTool, outcome) {
+              if (outcome.verdict !== 'clean') {
+                process.stderr.write(
+                  `vault[http/sse]: ${outcome.verdict} (L${outcome.layer ?? '?'}) from '${scannedTool}' (mode=${config.mode}${outcome.mutated ? ', mutated' : ''})\n`,
+                );
+              }
+              if (telemetry.enabled) {
+                telemetry.send({
+                  type: 'detection',
+                  layer: outcome.layer ?? null,
+                  verdict: outcome.verdict,
+                  confidence: outcome.result?.confidence ?? 0,
+                  toolName: scannedTool,
+                  contentHash: outcome.contentHash,
+                  patterns: outcome.result?.detectedPatterns ?? [],
+                });
+              }
+              if (audit.enabled) {
+                const previewText = scannedMsg.result.content
+                  .map((c) => (typeof c.text === 'string' ? c.text : ''))
+                  .join('\n');
+                audit.log({
+                  type: 'detection',
+                  toolName: scannedTool,
+                  layer: outcome.layer ?? null,
+                  verdict: outcome.verdict,
+                  confidence: outcome.result?.confidence ?? 0,
+                  patterns: outcome.result?.detectedPatterns ?? [],
+                  mode: config.mode,
+                  mutated: outcome.mutated,
+                  reasoning: outcome.result?.reasoning,
+                  contentPreview: preview(previewText),
+                });
+              }
+              if (scanReporter.enabled) {
+                scanReporter.report({
+                  toolName: scannedTool,
+                  mcpServerUrl: upstreamUrl,
+                  contentHash: outcome.contentHash,
+                  result: outcome.result,
+                  verdict: outcome.verdict,
+                  layer: outcome.layer ?? null,
+                });
+              }
+              if (config.capability.enabled) {
+                for (const item of scannedMsg.result.content) {
+                  if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
+                    taint.add({ toolName: scannedTool, content: item.text, addedAt: Date.now() });
+                  }
+                }
+              }
+            },
+          },
+          (chunk) => {
+            res.write(chunk);
+          },
+        );
+      } catch (err) {
+        process.stderr.write(`vault[http/sse]: stream scan failed: ${err}\n`);
+      }
+      res.end();
       return;
     }
 
