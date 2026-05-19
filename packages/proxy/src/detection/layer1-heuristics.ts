@@ -8,11 +8,16 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
   { name: 'system-prefix', re: /(?:^|\n)\s*system\s*:/i },
   { name: 'you-are-now', re: /you\s+are\s+now\s+(?:a\s+|an\s+)?[a-z]/i },
   { name: 'new-instructions', re: /new\s+instructions?\s*:/i },
-  { name: 'override-above', re: /override\s+(?:the\s+)?(?:above|previous|system|prior)/i },
+  // "override system" alone is too broad — fires on "override system safeguards" in research
+  // articles. Require "system" to be followed by "prompt" or "instructions" specifically.
+  { name: 'override-above', re: /override\s+(?:the\s+)?(?:above|previous|prior|system\s+(?:prompt|instructions?))/i },
 ];
 
 const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;
-const BASE64_RE = /[A-Za-z0-9+/]{40,}={0,2}/;
+// Match real base64 by requiring '=' padding (never in hex/URLs) OR '+' (not in hex or
+// URL path segments). This excludes hex hashes and URL paths like /foo/bar which share
+// the '/' char with base64 but never have '+' or trailing '='.
+const BASE64_RE = /[A-Za-z0-9+/]{20,}={1,2}|[A-Za-z0-9/]{5,}[+][A-Za-z0-9+/]{10,}/;
 const HTML_COMMENT_INSTRUCTION_RE =
   /<!--[\s\S]*?\b(?:ignore|disregard|forget|override|bypass|reveal|exfiltrate|system)\b[\s\S]*?-->/i;
 const MD_LINK_PROMPT_ANCHOR_RE =

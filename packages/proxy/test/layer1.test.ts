@@ -58,7 +58,8 @@ describe('layer1 heuristics', () => {
   });
 
   it('flags large base64 blob', () => {
-    const blob = 'A'.repeat(60);
+    // 31 bytes encodes to 44 chars ending with '==' — the padding is the base64 marker
+    const blob = Buffer.from('x'.repeat(31)).toString('base64');
     const r = runLayer1(`payload: ${blob}`);
     expect(r.detectedPatterns).toContain('large-base64-blob');
   });
