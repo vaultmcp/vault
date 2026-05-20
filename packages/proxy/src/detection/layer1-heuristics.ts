@@ -14,6 +14,10 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
 ];
 
 const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;
+// U+202E RIGHT-TO-LEFT OVERRIDE and U+202D LEFT-TO-RIGHT OVERRIDE are used to flip
+// rendered text so a literal trigger phrase reads as something benign. Real prose
+// effectively never contains these. (Found by self red-team rt-007, 2026-05-19.)
+const BIDI_OVERRIDE_RE = /[\u202A-\u202E\u2066-\u2069]/;
 // Match real base64 by requiring '=' padding (never in hex/URLs) OR '+' (not in hex or
 // URL path segments). This excludes hex hashes and URL paths like /foo/bar which share
 // the '/' char with base64 but never have '+' or trailing '='.
@@ -23,6 +27,11 @@ const HTML_COMMENT_INSTRUCTION_RE =
 const MD_LINK_PROMPT_ANCHOR_RE =
   /\[[^\]]*\b(?:ignore|bypass|override|jailbreak|disregard|click\s+here\s+to)\b[^\]]*\]\([^)]+\)/i;
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g;
+// HTML numeric character references: &#NN; or &#xHH;. Dense sequences of these are
+// not how humans write HTML — they're how attackers hide a trigger word from the
+// L1 plaintext regex. We treat ">= 12 consecutive entity refs" as suspicious.
+// (Found by self red-team rt-004, 2026-05-19.)
+const HTML_ENTITY_RUN_RE = /(?:&#x?[0-9a-f]+;){12,}/i;
 
 export function runLayer1(text: string): DetectionResult {
   const patterns: string[] = [];
@@ -37,6 +46,16 @@ export function runLayer1(text: string): DetectionResult {
   if (UNICODE_TAG_RE.test(text)) {
     patterns.push('unicode-tag-smuggling');
     bump('malicious', 0.99);
+  }
+
+  if (BIDI_OVERRIDE_RE.test(text)) {
+    patterns.push('bidi-override-smuggling');
+    bump('malicious', 0.95);
+  }
+
+  if (HTML_ENTITY_RUN_RE.test(text)) {
+    patterns.push('html-entity-encoded-run');
+    bump('suspicious', 0.7);
   }
 
   for (const { name, re } of INSTRUCTION_PREFIXES) {
