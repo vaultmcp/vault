@@ -89,6 +89,44 @@ than a blanket relaxation.
 
 **Self red-team evidence:** rt-038 (Postgres row).
 
+### 11. Upstream MCP servers that normalize content can hide injections from Vault
+The `mcp-server-fetch` MCP server converts HTML to Markdown before returning it
+to the client. That conversion **strips HTML comments**. So an attacker who
+hides a prompt-injection inside `<!-- ignore previous instructions -->` is
+invisible to Vault because Vault inspects what the MCP server returned, not the
+raw bytes the server fetched.
+
+This affects any MCP server that does HTML→text, PDF→text, or similar
+normalization before returning. We confirmed it during the 2026-05-19 real-world
+P3 battery: `packages/eval/real-world/fetch.md` PoC #1 was missed for exactly
+this reason. The same content served as a `text/plain` body would be caught.
+
+**Status:** Architectural. Vault sits downstream of normalization, by design
+(it's the agent-visible surface). The defense for this class is either (a) an
+MCP-server-side scan before normalization, or (b) configuring fetch-class
+servers to return raw HTML rather than rendered Markdown when the operator
+wants Vault to see all hidden content. We will document this in
+`SECURITY_MODEL.md`.
+
+### 12. False positives when Vault scans its own source repo (or similar)
+Self-referential FPs: a Vault-protected agent that browses Vault's own commit
+history or test fixtures will see attack-vocabulary verbatim (commit messages
+discussing the L1 BIDI-override fix, test files containing the literal
+`"ignore previous instructions"` as fixture text) and L1 will flag them as
+malicious. We observed 5/15 git ops flagged in `packages/eval/real-world/git.md`
+for this reason.
+
+The same class affects any repository whose documentation discusses prompt
+injection (security research repos, LLM-tutorial repos, anti-prompt-injection
+libraries, …). Tightening the L1 regex to exclude "ignore previous instructions
+appearing inside a fenced code block" or "inside a git diff" would reduce TPR
+on real attacks that abuse exactly those carriers, so we **do not** apply that
+fix. Operators who proxy git-style tools against repos that discuss prompt
+injection should configure `VAULT_MODE=log` for those servers (verdicts
+emitted to stderr but content not blocked) until L3 is enabled.
+
+**Status:** Open and considered acceptable for the launch threat model.
+
 ## Limitations we accept (every security system has these)
 
 ### 7. We are not a content-safety filter
