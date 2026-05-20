@@ -28,6 +28,7 @@ import { runLayer3 } from './layer3-judge.js';
 import { Layer3Unavailable } from './clients/types.js';
 import type { JudgeContext } from './clients/types.js';
 import type { DetectionResult } from './types.js';
+import { emitDegradedWarningOnce } from './degraded-state.js';
 
 const L1_MALICIOUS_SHORT_CIRCUIT = 0.85;
 export const DEFAULT_STREAM_THRESHOLD = 8 * 1024;
@@ -132,12 +133,14 @@ export async function runStreamingPipeline(
   if (worstSuspicious) {
     try {
       const l3 = await runLayer3(text, context);
-      return { ...l3, streamingChunks: chunksProcessed };
+      return { ...l3, l3Status: 'ran', streamingChunks: chunksProcessed };
     } catch (err) {
       if (!(err instanceof Layer3Unavailable)) {
         process.stderr.write(
           `vault: layer-3 failed during streaming (${err instanceof Error ? err.message : String(err)}) — falling back to clean\n`,
         );
+      } else {
+        emitDegradedWarningOnce();
       }
       // FP-safe: suspicious-without-L3 → clean (same policy as the non-streaming pipeline)
       const { chunkIndex: _ix, ...rest } = worstSuspicious;
@@ -145,6 +148,7 @@ export async function runStreamingPipeline(
         ...rest,
         verdict: 'clean',
         reasoning: `${rest.reasoning} — demoted to clean: layer-3 unavailable (streaming)`,
+        l3Status: 'unavailable',
         streamingChunks: chunksProcessed,
       };
     }

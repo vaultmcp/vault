@@ -21,6 +21,7 @@ import { runLayer1 } from '../../proxy/src/detection/layer1-heuristics.js';
 import { runLayer2 } from '../../proxy/src/detection/layer2-embeddings.js';
 import { runLayer3 } from '../../proxy/src/detection/layer3-judge.js';
 import { Layer3Unavailable } from '../../proxy/src/detection/clients/types.js';
+import { createClientFromEnv } from '../../proxy/src/detection/clients/factory.js';
 import type { DetectionResult } from '../../proxy/src/detection/types.js';
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -53,6 +54,7 @@ interface RunResult {
   l3_ms: number;
   l3_called: boolean;
   l3_unavailable: boolean;
+  l3_status: string; // 'ran' | 'unavailable' | 'skipped_gate'
   text_preview: string;
   full_text: string; // kept for the "worst N" sections
   correct: boolean;
@@ -63,12 +65,13 @@ interface RunOptions {
   max?: number;
   noL3: boolean;
   dryRunL3: boolean;
+  allowDegraded: boolean;
 }
 
 // ---------- CLI parse ----------
 
 function parseArgs(argv: string[]): RunOptions {
-  const o: RunOptions = { set: 'both', noL3: false, dryRunL3: false };
+  const o: RunOptions = { set: 'both', noL3: false, dryRunL3: false, allowDegraded: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--set') {
@@ -82,12 +85,15 @@ function parseArgs(argv: string[]): RunOptions {
       o.noL3 = true;
     } else if (a === '--dry-run-l3') {
       o.dryRunL3 = true;
+    } else if (a === '--allow-degraded') {
+      o.allowDegraded = true;
     } else if (a === '--help' || a === '-h') {
       process.stdout.write(`Usage: pnpm --filter @vaultmcp/eval run -- [flags]\n` +
         `  --set holdout-attacks|benign|both   default: both\n` +
         `  --max N                              cap entries per set (debugging)\n` +
         `  --no-l3                              skip L3 entirely (free run)\n` +
-        `  --dry-run-l3                         log L3 calls without making them\n`);
+        `  --dry-run-l3                         log L3 calls without making them\n` +
+        `  --allow-degraded                     run without L3 (produces degraded results; label is prominent in output)\n`);
       process.exit(0);
     } else {
       throw new Error(`unknown arg: ${a}`);
@@ -216,6 +222,7 @@ function packageResult(
   timing: { l1_ms: number; l2_ms: number; l3_ms: number; l3_called: boolean; l3_unavailable: boolean },
 ): RunResult {
   const correct = isCorrect(entry.expected_verdict, actual.verdict);
+  const l3Status = actual.l3Status ?? (timing.l3_called ? 'ran' : timing.l3_unavailable ? 'unavailable' : 'skipped_gate');
   return {
     id: entry.id,
     category: entry.category,
@@ -226,6 +233,7 @@ function packageResult(
     confidence: actual.confidence,
     reasoning: actual.reasoning,
     patterns: actual.detectedPatterns ?? [],
+    l3_status: l3Status,
     text_preview: entry.text.slice(0, 140),
     full_text: entry.text,
     correct,
@@ -327,12 +335,16 @@ function nowStamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
-function renderMarkdown(opts: RunOptions, attackAgg: Aggregate | null, benignAgg: Aggregate | null): string {
+function renderMarkdown(opts: RunOptions, attackAgg: Aggregate | null, benignAgg: Aggregate | null, degraded: boolean): string {
   const lines: string[] = [];
-  lines.push(`# Vault Eval — ${nowStamp()}\n`);
-  lines.push(`Command: \`pnpm --filter @vaultmcp/eval run -- --set ${opts.set}${opts.noL3 ? ' --no-l3' : ''}${opts.dryRunL3 ? ' --dry-run-l3' : ''}${opts.max ? ` --max ${opts.max}` : ''}\`\n`);
-  lines.push(`Pipeline: L1 heuristics → L2 bge-small embeddings → L3 ${opts.noL3 ? 'DISABLED' : opts.dryRunL3 ? 'DRY-RUN (no API calls)' : 'Anthropic Haiku judge'}\n`);
-  lines.push(`L3 status: ${process.env.ANTHROPIC_API_KEY ? 'API key set' : 'NO API KEY — L3 effectively disabled, results reflect L1+L2 only'}\n`);
+  const degradedTag = degraded ? '[DEGRADED — L3 disabled] ' : '';
+  lines.push(`# ${degradedTag}Vault Eval — ${nowStamp()}\n`);
+  if (degraded) {
+    lines.push(`> **DEGRADED MODE**: L3 (LLM judge) was unavailable during this run (no ANTHROPIC_API_KEY). Numbers reflect L1+L2 detection only. Re-run with ANTHROPIC_API_KEY set for full results.\n`);
+  }
+  lines.push(`Command: \`pnpm --filter @vaultmcp/eval run -- --set ${opts.set}${opts.noL3 ? ' --no-l3' : ''}${opts.dryRunL3 ? ' --dry-run-l3' : ''}${opts.allowDegraded ? ' --allow-degraded' : ''}${opts.max ? ` --max ${opts.max}` : ''}\`\n`);
+  lines.push(`Pipeline: L1 heuristics → L2 bge-small embeddings → L3 ${opts.noL3 ? 'DISABLED' : opts.dryRunL3 ? 'DRY-RUN (no API calls)' : degraded ? 'UNAVAILABLE (no API key)' : 'Anthropic Haiku judge'}\n`);
+  lines.push(`L3 status: ${degraded ? 'UNAVAILABLE — no API key configured; results reflect L1+L2 only' : 'API key set — L3 fully active'}\n`);
   lines.push('');
 
   // Headline numbers
@@ -414,6 +426,20 @@ async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const stamp = nowStamp();
 
+  // Preflight: refuse to run in silent-degraded mode. If L3 is unavailable and the
+  // caller hasn't explicitly acknowledged this with --allow-degraded, fail fast and
+  // loud rather than producing misleading numbers.
+  if (!opts.noL3 && !opts.dryRunL3 && !opts.allowDegraded) {
+    const l3Client = createClientFromEnv();
+    if (!l3Client) {
+      process.stderr.write(
+        `ERROR: L3 client unavailable. Set ANTHROPIC_API_KEY (or OPENAI_API_KEY) to enable full detection.\n` +
+        `       Pass --allow-degraded to run in L1+L2-only mode (results will be labeled [DEGRADED]).\n`,
+      );
+      process.exit(1);
+    }
+  }
+
   const resultsDir = path.join(ROOT, 'results');
   if (!existsSync(resultsDir)) mkdirSync(resultsDir, { recursive: true });
 
@@ -443,7 +469,8 @@ async function main(): Promise<void> {
     aggs[setName] = aggregate(results, setName);
   }
 
-  const md = renderMarkdown(opts, aggs['holdout-attacks'] ?? null, aggs.benign ?? null);
+  const degraded = createClientFromEnv() === null && !opts.noL3 && !opts.dryRunL3;
+  const md = renderMarkdown(opts, aggs['holdout-attacks'] ?? null, aggs.benign ?? null, degraded);
   const mdPath = path.join(resultsDir, `eval-${stamp}.md`);
   const jsonPath = path.join(resultsDir, `eval-${stamp}.json`);
   writeFileSync(mdPath, md);
