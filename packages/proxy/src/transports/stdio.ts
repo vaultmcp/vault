@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import path from 'node:path';
 import { loadConfig } from '../config.js';
 import {
   TaintStore,
@@ -74,8 +75,41 @@ function reportManifestVerdict(verdict: ManifestVerdict, mode: 'on' | 'strict'):
   }
 }
 
+/// Build a stable reputation identifier from the upstream command + args. The naive
+/// "stdio:<cmd>" collapses every npx-launched server into one bucket, making the on-chain
+/// score useless. We append the first non-flag arg (typically the package name or module),
+/// stripping path / extension if it's a filesystem path. Examples:
+///   npx -y @modelcontextprotocol/server-filesystem /tmp → stdio:npx:@modelcontextprotocol/server-filesystem
+///   uvx mcp-server-git                                  → stdio:uvx:mcp-server-git
+///   python -m mcp_server_fs                             → stdio:python:mcp_server_fs
+///   node /home/user/server.js                           → stdio:node:server
+///   npx (bare, no args)                                 → stdio:npx
+export function computeServerIdentifier(cmd: string, args: string[]): string {
+  let target: string | undefined;
+  for (const a of args) {
+    if (typeof a !== 'string' || a.length === 0) continue;
+    if (a.startsWith('-')) continue;
+    target = a;
+    break;
+  }
+  if (!target) return `stdio:${cmd}`;
+  // Strip filesystem paths down to basename-without-extension. Scoped npm packages
+  // (@scope/name) also contain '/' but should be preserved as-is — distinguish by leading '@'.
+  const looksLikePath =
+    !target.startsWith('@') &&
+    (target.startsWith('/') ||
+      target.startsWith('./') ||
+      target.startsWith('../') ||
+      target.includes('\\'));
+  if (looksLikePath) {
+    target = path.basename(target).replace(/\.[a-z]+$/i, '');
+  }
+  return `stdio:${cmd}:${target}`;
+}
+
 export function startProxy(cmd: string, args: string[]): void {
   const config = loadConfig();
+  const serverIdentifier = computeServerIdentifier(cmd, args);
   const toolNameById = new Map<string | number, string>();
   const taint = new TaintStore(config.capability.windowSize);
   const manifest =
@@ -265,7 +299,7 @@ export function startProxy(cmd: string, args: string[]): void {
         if (scanReporter.enabled) {
           scanReporter.report({
             toolName,
-            mcpServerUrl: `stdio:${cmd}`,
+            mcpServerUrl: serverIdentifier,
             contentHash: outcome.contentHash,
             result: outcome.result,
             verdict: outcome.verdict,
