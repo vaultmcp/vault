@@ -1,15 +1,17 @@
 {
-  "name": "@vaultmcp/mcp-proxy",
-  "version": "0.0.1",
-  "description": "MCP prompt-injection scanning proxy",
+  "name": "@aimcpvault/mcp-proxy",
+  "version": "0.1.0-beta.2",
+  "description": "MCP prompt-injection scanning proxy — 99.5% TPR, 0.0% FPR",
   "type": "module",
   "bin": {
-    "mcp-proxy": "./dist/index.js",
-    "vault-audit": "./dist/audit-view.js",
-    "vault-check": "./dist/check.js",
-    "vault-init": "./dist/init.js"
+    "mcp-proxy": "dist/index.js",
+    "vault-audit": "dist/audit-view.js",
+    "vault-check": "dist/check.js",
+    "vault-init": "dist/init.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts",
@@ -22,11 +24,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
-    "@vaultmcp/corpus": "workspace:*",
     "@xenova/transformers": "^2.17.2",
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@vaultmcp/corpus": "workspace:*",
     "@types/node": "^22.10.0",
     "tsup": "^8.3.0",
     "tsx": "^4.19.0",

@@ -12,14 +12,14 @@ Detection is three-layer: regex heuristics (sub-millisecond), embedding similari
 
 ```bash
 # Requires Node 20+
-npx @vaultmcp/mcp-proxy@beta -- <your MCP server command>
+npx @aimcpvault/mcp-proxy@beta -- <your MCP server command>
 ```
 
 Example — wrapping the filesystem server:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # required for full detection
-npx @vaultmcp/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
+npx @aimcpvault/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
 ```
 
 If you skip `ANTHROPIC_API_KEY`, Vault will print a warning on stderr and run in degraded mode (L1+L2 only). This is intentional and loud — not a silent failure.
@@ -33,7 +33,7 @@ If you skip `ANTHROPIC_API_KEY`, Vault will print a warning on stderr and run in
     "filesystem": {
       "command": "npx",
       "args": [
-        "@vaultmcp/mcp-proxy@beta",
+        "@aimcpvault/mcp-proxy@beta",
         "--",
         "npx", "-y", "@modelcontextprotocol/server-filesystem", "/path"
       ],

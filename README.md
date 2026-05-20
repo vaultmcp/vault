@@ -8,7 +8,7 @@ On our public eval of 188 attacks (Greshake et al., NVIDIA garak, OWASP LLM Top 
 
 ```bash
 # Wrap any MCP server — zero config change to your agent
-npx @vaultmcp/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
+npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
 ```
 
 ---
@@ -142,10 +142,10 @@ Every scan verdict can be attested on-chain via [EAS](https://attest.sh) on Base
 
 ```bash
 # npm / npx (no install required)
-npx @vaultmcp/mcp-proxy -- <your MCP server command>
+npx @aimcpvault/mcp-proxy -- <your MCP server command>
 
 # or install globally
-npm install -g @vaultmcp/mcp-proxy
+npm install -g @aimcpvault/mcp-proxy
 mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
 ```
 
@@ -154,7 +154,7 @@ mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
 The fastest way is `vault init` — it auto-detects your existing MCP configs and wraps each server with the proxy:
 
 ```bash
-npx @vaultmcp/mcp-proxy && vault-init
+npx @aimcpvault/mcp-proxy && vault-init
 ```
 
 `vault init` shows a diff preview before writing, backs up the original config to `<config>.vault-backup`, and is idempotent (re-running skips already-wrapped servers). To revert: `vault-init unwrap`.
@@ -168,7 +168,7 @@ Or wrap by hand:
     "filesystem": {
       "command": "npx",
       "args": [
-        "@vaultmcp/mcp-proxy",
+        "@aimcpvault/mcp-proxy",
         "--",
         "npx", "-y", "@modelcontextprotocol/server-filesystem", "/path"
       ]
@@ -197,7 +197,7 @@ vault-check --all              # scores every server in your MCP config(s)
 vault-check --json | jq .      # machine-readable
 ```
 
-If you've installed `@vaultmcp/mcp-proxy`, the proxy ships its own `vault-check` binary identical to the standalone — no need to install both.
+If you've installed `@aimcpvault/mcp-proxy`, the proxy ships its own `vault-check` binary identical to the standalone — no need to install both.
 
 Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer).
 
@@ -228,7 +228,7 @@ All endpoints accept an optional `?network=base|base-sepolia` query parameter. C
 
 ```bash
 # Proxy a remote MCP server over HTTP
-npx @vaultmcp/mcp-proxy --transport http \
+npx @aimcpvault/mcp-proxy --transport http \
   --upstream https://mcp.example.com/v1 \
   --port 8800
 ```
@@ -318,7 +318,7 @@ To disable telemetry entirely: `VAULT_TELEMETRY=0`.
 
 ```
 packages/
-  proxy/          # @vaultmcp/mcp-proxy — the core proxy (this is what you install)
+  proxy/          # @aimcpvault/mcp-proxy — the core proxy (this is what you install)
   corpus/         # @vaultmcp/corpus — curated attack/clean embedding corpus
   contracts/      # @vaultmcp/contracts — VaultReputation.sol + EAS schema registration
   collector/      # @vaultmcp/collector — telemetry ingest + aggregation server
@@ -365,7 +365,7 @@ The self red-team (`packages/eval/red-team/`) is the other half of the honest-ev
 pnpm install
 
 # Run proxy in dev mode (wraps the MCP filesystem server)
-pnpm --filter @vaultmcp/mcp-proxy dev -- npx -y @modelcontextprotocol/server-filesystem /tmp
+pnpm --filter @aimcpvault/mcp-proxy dev -- npx -y @modelcontextprotocol/server-filesystem /tmp
 
 # Run all tests
 pnpm -r test

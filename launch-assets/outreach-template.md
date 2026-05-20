@@ -17,7 +17,7 @@ I'd value 20-30 minutes of your time running it against a real workflow and tell
 Install:
 ```
 export ANTHROPIC_API_KEY=sk-ant-...
-npx @vaultmcp/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /your/data
+npx @aimcpvault/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /your/data
 ```
 
 Beta guide: [link to BETA.md on repo]
@@ -43,7 +43,7 @@ If your server has legitimate content that reads like an attack (e.g., security 
 
 Install:
 ```
-npx @vaultmcp/mcp-proxy@beta -- <your server command>
+npx @aimcpvault/mcp-proxy@beta -- <your server command>
 ```
 
 Demo: http://vaultmcp.io
@@ -66,7 +66,7 @@ The on-chain piece: every scan verdict is attested via EAS on Base. The proxy bu
 You'd be one of the first to have attestations on-chain. If you run any MCP servers or AI tooling, 10-20 minutes of install time would help a lot.
 
 Demo: http://vaultmcp.io (live Sepolia leaderboard)
-Install: `npx @vaultmcp/mcp-proxy@beta -- <your MCP server command>`
+Install: `npx @aimcpvault/mcp-proxy@beta -- <your MCP server command>`
 Beta guide: [link to BETA.md]
 
 Keep it private until launch — I'll let you know when.
