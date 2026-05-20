@@ -1,0 +1,142 @@
+[
+  {
+    "id": "cs-001",
+    "text": "export function debounce<T extends (...args: any[]) => unknown>(fn: T, ms: number): (...args: Parameters<T>) => void {\n  let t: ReturnType<typeof setTimeout> | undefined;\n  return (...args: Parameters<T>) => {\n    if (t) clearTimeout(t);\n    t = setTimeout(() => fn(...args), ms);\n  };\n}",
+    "category": "benign_code",
+    "source": "authored representative (canonical debounce idiom, idiomatic TS)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-002",
+    "text": "def fibonacci(n: int) -> int:\n    if n < 0:\n        raise ValueError('n must be non-negative')\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a\n\n\nif __name__ == '__main__':\n    for i in range(10):\n        print(f'fib({i}) = {fibonacci(i)}')",
+    "category": "benign_code",
+    "source": "authored representative (canonical iterative Fibonacci)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-003",
+    "text": "package main\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc handler(w http.ResponseWriter, r *http.Request) {\n\tfmt.Fprintf(w, \"hello, %s\", r.URL.Path[1:])\n}\n\nfunc main() {\n\thttp.HandleFunc(\"/\", handler)\n\tif err := http.ListenAndServe(\":8080\", nil); err != nil {\n\t\tpanic(err)\n\t}\n}",
+    "category": "benign_code",
+    "source": "authored representative (canonical net/http hello-world from go.dev tour)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-004",
+    "text": "import { describe, it, expect } from 'vitest';\nimport { sum } from './math';\n\ndescribe('sum', () => {\n  it('adds two positive numbers', () => {\n    expect(sum(2, 3)).toBe(5);\n  });\n\n  it('handles negative numbers', () => {\n    expect(sum(-1, 1)).toBe(0);\n  });\n\n  it('handles zero', () => {\n    expect(sum(0, 0)).toBe(0);\n  });\n});",
+    "category": "benign_code",
+    "source": "authored representative (canonical vitest test shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-005",
+    "text": "from dataclasses import dataclass\nfrom typing import Optional\n\n@dataclass\nclass User:\n    id: int\n    email: str\n    name: Optional[str] = None\n    is_active: bool = True\n\n    def display_name(self) -> str:\n        return self.name or self.email.split('@')[0]",
+    "category": "benign_code",
+    "source": "authored representative (canonical Python dataclass shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-006",
+    "text": "type Result<T, E = Error> =\n  | { ok: true; value: T }\n  | { ok: false; error: E };\n\nfunction tryParse(json: string): Result<unknown> {\n  try {\n    return { ok: true, value: JSON.parse(json) };\n  } catch (e) {\n    return { ok: false, error: e as Error };\n  }\n}",
+    "category": "benign_code",
+    "source": "authored representative (Result-type pattern, common in TS codebases)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-007",
+    "text": "package cache\n\nimport (\n\t\"sync\"\n\t\"time\"\n)\n\ntype entry[V any] struct {\n\tvalue   V\n\texpires time.Time\n}\n\ntype Cache[K comparable, V any] struct {\n\tmu sync.RWMutex\n\tm  map[K]entry[V]\n}\n\nfunc (c *Cache[K, V]) Get(k K) (V, bool) {\n\tc.mu.RLock()\n\tdefer c.mu.RUnlock()\n\te, ok := c.m[k]\n\tif !ok || time.Now().After(e.expires) {\n\t\tvar zero V\n\t\treturn zero, false\n\t}\n\treturn e.value, true\n}",
+    "category": "benign_code",
+    "source": "authored representative (generic Go cache, idiomatic post-1.18 generics)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-008",
+    "text": "import asyncio\nimport aiohttp\n\nasync def fetch(session: aiohttp.ClientSession, url: str) -> str:\n    async with session.get(url) as resp:\n        resp.raise_for_status()\n        return await resp.text()\n\nasync def main(urls: list[str]) -> list[str]:\n    async with aiohttp.ClientSession() as session:\n        return await asyncio.gather(*(fetch(session, u) for u in urls))\n\nif __name__ == '__main__':\n    asyncio.run(main(['https://example.com', 'https://example.org']))",
+    "category": "benign_code",
+    "source": "authored representative (canonical aiohttp concurrent fetch pattern)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-009",
+    "text": "// Levenshtein distance, iterative two-row implementation.\nexport function distance(a: string, b: string): number {\n  if (a.length === 0) return b.length;\n  if (b.length === 0) return a.length;\n  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);\n  let curr = new Array<number>(b.length + 1);\n  for (let i = 1; i <= a.length; i++) {\n    curr[0] = i;\n    for (let j = 1; j <= b.length; j++) {\n      const cost = a[i - 1] === b[j - 1] ? 0 : 1;\n      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);\n    }\n    [prev, curr] = [curr, prev];\n  }\n  return prev[b.length];\n}",
+    "category": "benign_code",
+    "source": "authored representative (textbook Levenshtein, two-row DP)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-010",
+    "text": "import logging\nfrom logging.handlers import RotatingFileHandler\n\nlogger = logging.getLogger('app')\nlogger.setLevel(logging.INFO)\n\nhandler = RotatingFileHandler('app.log', maxBytes=5 * 1024 * 1024, backupCount=3)\nhandler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))\nlogger.addHandler(handler)\n\nlogger.info('app started')",
+    "category": "benign_code",
+    "source": "authored representative (canonical Python logging setup)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-011",
+    "text": "package main\n\nimport (\n\t\"context\"\n\t\"time\"\n)\n\nfunc doWithTimeout(parent context.Context, work func(context.Context) error) error {\n\tctx, cancel := context.WithTimeout(parent, 2*time.Second)\n\tdefer cancel()\n\treturn work(ctx)\n}",
+    "category": "benign_code",
+    "source": "authored representative (idiomatic Go context-with-timeout)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-012",
+    "text": "import { z } from 'zod';\n\nconst CreateUserSchema = z.object({\n  email: z.string().email(),\n  name: z.string().min(1).max(100),\n  age: z.number().int().min(13).max(120).optional(),\n  role: z.enum(['user', 'admin']).default('user'),\n});\n\nexport type CreateUserInput = z.infer<typeof CreateUserSchema>;\n\nexport function parseCreateUser(input: unknown): CreateUserInput {\n  return CreateUserSchema.parse(input);\n}",
+    "category": "benign_code",
+    "source": "authored representative (canonical zod schema definition)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-013",
+    "text": "# .github/workflows/ci.yml\nname: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n      - run: corepack enable\n      - run: pnpm install --frozen-lockfile\n      - run: pnpm run lint\n      - run: pnpm run test",
+    "category": "benign_code",
+    "source": "authored representative (canonical GitHub Actions Node CI workflow)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-014",
+    "text": "from contextlib import contextmanager\nimport time\n\n@contextmanager\ndef timed(label: str):\n    start = time.perf_counter()\n    try:\n        yield\n    finally:\n        elapsed = time.perf_counter() - start\n        print(f'{label}: {elapsed*1000:.2f} ms')\n\nwith timed('expensive op'):\n    sum(i*i for i in range(1_000_000))",
+    "category": "benign_code",
+    "source": "authored representative (canonical context-manager timing helper)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-015",
+    "text": "import express from 'express';\n\nconst app = express();\napp.use(express.json());\n\napp.get('/health', (_req, res) => {\n  res.json({ status: 'ok', uptime: process.uptime() });\n});\n\napp.post('/echo', (req, res) => {\n  res.json({ received: req.body });\n});\n\nconst port = Number(process.env.PORT ?? 3000);\napp.listen(port, () => console.log(`listening on ${port}`));",
+    "category": "benign_code",
+    "source": "authored representative (canonical Express health-check + echo server)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-016",
+    "text": "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n)\n\nvar ErrNotFound = errors.New(\"not found\")\n\ntype Store struct{ m map[string]string }\n\nfunc (s *Store) Get(k string) (string, error) {\n\tv, ok := s.m[k]\n\tif !ok {\n\t\treturn \"\", fmt.Errorf(\"key %q: %w\", k, ErrNotFound)\n\t}\n\treturn v, nil\n}",
+    "category": "benign_code",
+    "source": "authored representative (idiomatic Go error-wrapping with errors.Is)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-017",
+    "text": "-- migration 0007_add_user_indexes.sql\nBEGIN;\n\nCREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_email_lower\n  ON users (lower(email));\n\nCREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_created_at\n  ON users (created_at DESC);\n\nANALYZE users;\n\nCOMMIT;",
+    "category": "benign_code",
+    "source": "authored representative (canonical Postgres migration adding indexes)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-018",
+    "text": "import { useEffect, useState } from 'react';\n\nexport function useDebouncedValue<T>(value: T, delayMs: number): T {\n  const [debounced, setDebounced] = useState(value);\n  useEffect(() => {\n    const t = setTimeout(() => setDebounced(value), delayMs);\n    return () => clearTimeout(t);\n  }, [value, delayMs]);\n  return debounced;\n}",
+    "category": "benign_code",
+    "source": "authored representative (canonical React useDebouncedValue hook)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-019",
+    "text": "from collections import Counter\n\ndef top_k_words(text: str, k: int = 10) -> list[tuple[str, int]]:\n    words = (w.strip('.,;:!?\"\\'()[]').lower() for w in text.split())\n    words = (w for w in words if w)\n    return Counter(words).most_common(k)\n\nif __name__ == '__main__':\n    sample = 'the quick brown fox jumps over the lazy dog the the'\n    print(top_k_words(sample, 3))",
+    "category": "benign_code",
+    "source": "authored representative (canonical Counter top-k pattern)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "cs-020",
+    "text": "package main\n\nimport (\n\t\"crypto/sha256\"\n\t\"encoding/hex\"\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n)\n\nfunc sha256file(path string) (string, error) {\n\tf, err := os.Open(path)\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\tdefer f.Close()\n\th := sha256.New()\n\tif _, err := io.Copy(h, f); err != nil {\n\t\treturn \"\", err\n\t}\n\treturn hex.EncodeToString(h.Sum(nil)), nil\n}\n\nfunc main() {\n\tif len(os.Args) < 2 {\n\t\tfmt.Fprintln(os.Stderr, \"usage: sha256file <path>\")\n\t\tos.Exit(2)\n\t}\n\tsum, err := sha256file(os.Args[1])\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, err)\n\t\tos.Exit(1)\n\t}\n\tfmt.Println(sum)\n}",
+    "category": "benign_code",
+    "source": "authored representative (canonical Go sha256-of-file utility)",
+    "expected_verdict": "clean"
+  }
+]

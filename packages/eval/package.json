@@ -12,7 +12,8 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "score": "tsx src/index.ts"
+    "score": "tsx src/index.ts",
+    "eval": "tsx src/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

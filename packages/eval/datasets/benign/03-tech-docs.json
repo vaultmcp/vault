@@ -1,0 +1,177 @@
+[
+  {
+    "id": "td-001",
+    "text": "PostgreSQL VACUUM reclaims storage occupied by dead tuples. In normal PostgreSQL operation, tuples that are deleted or obsoleted by an update are not physically removed from their table; they remain present until a VACUUM is done. Therefore it's necessary to do VACUUM periodically, especially on frequently-updated tables. Plain VACUUM (without FULL) simply reclaims space and makes it available for re-use. This form of the command can operate in parallel with normal reading and writing of the table, as an exclusive lock is not obtained.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (PostgreSQL 16 docs, SQL-VACUUM page, www.postgresql.org/docs)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-002",
+    "text": "Python's contextlib module provides utilities for working with the with-statement. The @contextmanager decorator lets you write a generator function whose body is split by a single yield: code before yield runs on __enter__, code after yield runs on __exit__. Exceptions raised inside the with-block are re-raised at the yield site, so you can wrap teardown in a try/finally to guarantee cleanup. This is usually simpler than writing a full __enter__/__exit__ class.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (Python 3.13 docs, contextlib module reference, docs.python.org)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-003",
+    "text": "AWS S3 server-side encryption with customer-provided keys (SSE-C) requires the client to supply an encryption key with every PUT and GET request. The key is used by S3 to encrypt the object at write time and to decrypt it at read time; S3 does not store the key. If you lose the key, the object is unrecoverable. Requests must be made over HTTPS, and the key must be provided in the x-amz-server-side-encryption-customer-key header along with its MD5 digest.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (AWS S3 User Guide, 'Server-Side Encryption with Customer-Provided Keys (SSE-C)', docs.aws.amazon.com)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-004",
+    "text": "TypeScript's discriminated unions let you model a value that can be one of several shapes, each tagged by a literal property. interface Square { kind: 'square'; size: number; } interface Circle { kind: 'circle'; radius: number; } type Shape = Square | Circle; Inside a switch on shape.kind, TypeScript narrows the type so that shape.size is only accessible in the 'square' case and shape.radius only in the 'circle' case. This pattern composes with exhaustiveness checking via the 'never' type.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (TypeScript Handbook, 'Narrowing' / 'Discriminated Unions' chapters, typescriptlang.org)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-005",
+    "text": "Kubernetes Pods are the smallest deployable unit. A Pod represents a single instance of a running process and encapsulates one or more containers, storage resources, a unique network identity, and options that govern how the containers should run. Pods are designed to be ephemeral; if a Pod is deleted or its node fails, Kubernetes will not recreate it automatically. To run Pods that should be replaced when they fail, use a higher-level controller like a Deployment, StatefulSet, or DaemonSet.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (kubernetes.io concepts/workloads/pods documentation)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-006",
+    "text": "Rust's borrow checker enforces three rules at compile time: each value has exactly one owner, references must always be valid, and you may have either any number of immutable references or exactly one mutable reference at a time, but not both. These rules eliminate entire classes of memory-safety bugs (use-after-free, double-free, data races) without requiring a garbage collector at runtime. The cost is a steeper learning curve for programmers used to languages with implicit aliasing.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (The Rust Programming Language book, chapter 4 'Understanding Ownership', doc.rust-lang.org/book)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-007",
+    "text": "Go's defer statement schedules a function call to run when the surrounding function returns, in last-in-first-out order. defer is commonly used to release resources: defer file.Close() right after Open ensures the file is closed regardless of which return path is taken. Arguments to a deferred call are evaluated at the defer statement, not at the call site, which surprises newcomers; defer fmt.Println(i) captures i's value now, not later.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (go.dev 'A Tour of Go' and 'Effective Go' sections on defer)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-008",
+    "text": "Node.js streams come in four flavours: Readable, Writable, Duplex, and Transform. The pipeline() function from node:stream provides a way to compose streams with proper error propagation: pipeline(src, gzip, dest, (err) => { ... }). It supersedes the older src.pipe(dst) chain pattern, which silently drops errors from intermediate streams. Always prefer pipeline() in new code.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (Node.js v22 docs, stream module API reference, nodejs.org/api/stream.html)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-009",
+    "text": "Stack Overflow accepted answer (paraphrased): The difference between git fetch and git pull is that pull is a fetch followed by a merge into the current branch. fetch alone updates your remote-tracking branches without modifying your working tree. Most teams that rebase prefer fetch + rebase over pull, because pull's implicit merge can produce surprising merge commits when the local branch has diverged.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (consensus answer pattern on stackoverflow.com 'difference between git fetch and git pull' Q&A)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-010",
+    "text": "Wikipedia article on Merkle tree: A Merkle tree is a tree in which every leaf node is labelled with the cryptographic hash of a data block, and every non-leaf node is labelled with the cryptographic hash of the concatenation of its children's labels. Merkle trees allow efficient and secure verification of the contents of large data structures. They are a generalisation of hash lists and hash chains.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (en.wikipedia.org/wiki/Merkle_tree intro section)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-011",
+    "text": "GitHub issue body (representative): I'm seeing a regression after upgrading from 4.1.2 to 4.2.0. The behaviour: when I call createClient() without a config object, the 4.1 version returned a client with the documented defaults, but 4.2 throws TypeError: Cannot read properties of undefined (reading 'endpoint'). Repro: see the linked gist. Workaround: pass {} explicitly. I think the regression is in src/factory.ts where the destructuring assumes a non-undefined parameter.",
+    "category": "benign_tech_docs",
+    "source": "authored representative (typical bug-report shape on GitHub; not from a specific issue)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-012",
+    "text": "npm package README excerpt for 'zod': Zod is a TypeScript-first schema declaration and validation library. With Zod, you declare a validator once and Zod will automatically infer the static TypeScript type. It's easy to compose simpler types into complex data structures. Zod has zero dependencies, works in Node.js and modern browsers, and supports plain JavaScript as well as TypeScript.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (zod.dev README and package description, public)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-013",
+    "text": "AWS Lambda cold-start optimisation tips: package only the dependencies your handler actually uses; prefer ESM over CommonJS for V8 startup; pre-warm the SDK client at module top level rather than inside the handler; choose ARM64 (Graviton) over x86_64 unless you have a specific compatibility need; raise memory not for memory's sake but because Lambda allocates CPU proportionally; consider Provisioned Concurrency for latency-sensitive paths.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (AWS Lambda 'Best practices for working with AWS Lambda functions' documentation)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-014",
+    "text": "MDN Web Docs on AbortController: The AbortController interface represents a controller object that allows you to abort one or more Web requests as and when desired. You can create a new AbortController object using the AbortController() constructor. Communicating with a DOM request is done using an AbortSignal object. fetch(url, { signal: controller.signal }) makes the request cancellable; calling controller.abort() rejects the fetch promise with an AbortError.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (MDN Web Docs, AbortController reference, developer.mozilla.org)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-015",
+    "text": "Docker multi-stage builds let you use multiple FROM statements in a single Dockerfile; each FROM starts a new stage. You can selectively COPY artefacts from one stage into another, leaving everything else behind. A common pattern is to build in a fat image with the full toolchain and then COPY --from=build /app/dist into a slim distroless final image, dramatically reducing the size of the published image.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (docs.docker.com 'Use multi-stage builds' page)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-016",
+    "text": "Redis SET command syntax: SET key value [EX seconds | PX milliseconds | EXAT unix-time-seconds | PXAT unix-time-milliseconds | KEEPTTL] [NX | XX] [GET]. NX only sets the key if it does not already exist; XX only sets it if it does exist. EX and PX set an expiry. GET returns the previous value (or nil) in addition to setting the new one — useful for atomic compare-and-swap-style updates.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (redis.io/commands/set documentation)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-017",
+    "text": "Terraform state stores the mapping between resources declared in HCL and the real objects that exist in the target provider. State should be stored remotely for any team-shared infrastructure; the canonical backend for AWS users is an S3 bucket with versioning enabled, fronted by a DynamoDB table for state locking. Never edit state by hand; use terraform state mv, terraform state rm, and terraform import to make changes safely.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (HashiCorp Terraform docs, 'State' section, developer.hashicorp.com/terraform/language/state)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-018",
+    "text": "Linux cgroups v2 unifies the resource-controller hierarchy that v1 split across separate mounts. Under cgroups v2, every cgroup is a directory in a single unified hierarchy, typically mounted at /sys/fs/cgroup. Controllers are enabled per-subtree via the cgroup.controllers and cgroup.subtree_control files. systemd manages this hierarchy on most modern distributions and exposes it via systemd-cgls and systemd-cgtop.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (kernel.org cgroup-v2 documentation)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-019",
+    "text": "GraphQL query syntax: a query is a selection set of fields, each of which may itself contain a selection set. Fields can take arguments, and arguments can be variables ($name: String!) bound at execution time. Fragments let you reuse a selection set across multiple queries: fragment UserSummary on User { id name avatarUrl }. Server resolvers are responsible for fetching each field; a default resolver returns the same-named property of the parent object.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (graphql.org Learn section, public documentation)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-020",
+    "text": "PR description (representative): This change replaces the in-process cache with a Redis-backed cache. Motivation: the in-process cache lost coherence across our three-replica deployment and led to stale reads after writes. Behaviour change: cache.get now returns a Promise instead of a sync value, since Redis I/O is async. Migration: callers that previously did `const v = cache.get(k)` now need `const v = await cache.get(k)`. All call sites in this repo are updated in this PR.",
+    "category": "benign_tech_docs",
+    "source": "authored representative (typical PR description shape; not from a specific PR)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-021",
+    "text": "Wikipedia article on Bloom filter: A Bloom filter is a space-efficient probabilistic data structure conceived by Burton Howard Bloom in 1970 that is used to test whether an element is a member of a set. False positive matches are possible, but false negatives are not — in other words, a query returns either 'possibly in set' or 'definitely not in set'. Elements can be added to the set but not removed (though variants like counting Bloom filters add this capability).",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (en.wikipedia.org/wiki/Bloom_filter intro)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-022",
+    "text": "MySQL InnoDB row-level locking can deadlock when two transactions acquire row locks in different orders. The engine detects deadlocks automatically and rolls back one of the transactions, returning ER_LOCK_DEADLOCK (1213) to the client. Applications should retry the rolled-back transaction; deadlocks are a normal cost of concurrent writes, not a bug. To reduce frequency, acquire locks in a consistent order and keep transactions short.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (MySQL 8.0 Reference Manual, 'InnoDB Locking' chapter, dev.mysql.com/doc)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-023",
+    "text": "Python list comprehensions evaluate to a new list in a single expression: [f(x) for x in iterable if condition(x)]. They are usually faster than the equivalent explicit for-loop because the interpreter optimises the iteration internally and avoids repeated attribute lookups for list.append. For very large outputs, consider a generator expression (parentheses instead of brackets) to avoid materialising the full list in memory.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (Python 3.13 tutorial, 'List Comprehensions' section, docs.python.org/3/tutorial)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-024",
+    "text": "Stack Overflow answer (representative paraphrase): The reason your async function returns a Promise<undefined> instead of the value you expected is almost certainly a missing return inside the function body. async functions wrap their return value in a Promise; if you forget to return, you get Promise<undefined>. await on a Promise<undefined> resolves to undefined. Double-check the function body for an explicit return statement.",
+    "category": "benign_tech_docs",
+    "source": "authored representative (typical SO answer shape; not from a specific Q&A)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "td-025",
+    "text": "Wikipedia on Conflict-free Replicated Data Types (CRDTs): A CRDT is a data structure that can be replicated across multiple computers in a network, with the following features: the application can update any replica independently, concurrently and without coordinating with other replicas; an algorithm built into the data type itself reconciles any differences that might result; although replicas may have different state at any particular point in time, they are guaranteed to eventually converge.",
+    "category": "benign_tech_docs",
+    "source": "paraphrased (en.wikipedia.org/wiki/Conflict-free_replicated_data_type intro section)",
+    "expected_verdict": "clean"
+  }
+]

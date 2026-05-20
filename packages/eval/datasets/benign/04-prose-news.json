@@ -1,0 +1,142 @@
+[
+  {
+    "id": "pn-001",
+    "text": "Researchers at the Mauna Loa Observatory reported this week that atmospheric CO2 concentrations crossed 425 parts per million for the first time in the modern monitoring record. The figure, drawn from the station's continuous measurements since 1958, was widely expected by climate scientists but underscored the slow pace of emissions reductions despite a decade of international agreements. The observatory's data series is one of the longest continuous records of any atmospheric variable.",
+    "category": "benign_prose",
+    "source": "authored representative (typical climate-reporting shape; not from a specific article)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-002",
+    "text": "Wikipedia article on the Iberian lynx: The Iberian lynx (Lynx pardinus) is a wild cat species endemic to the Iberian Peninsula in southwestern Europe. It is listed as Vulnerable on the IUCN Red List. In the 20th century the species nearly went extinct due to overhunting, poaching, habitat fragmentation, and a collapse of the rabbit population caused by myxomatosis and rabbit haemorrhagic disease. By the early 2000s only a few hundred animals remained.",
+    "category": "benign_prose",
+    "source": "paraphrased (en.wikipedia.org/wiki/Iberian_lynx intro)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-003",
+    "text": "The city council voted 9-4 on Tuesday to approve a pilot programme for shared electric cargo bikes in three central neighbourhoods. The programme, funded by a state transportation grant, will deploy 40 bikes at 12 docking stations over the summer. Supporters argued the bikes will reduce short-distance car trips; opponents raised concerns about sidewalk parking and the long-term cost once the grant expires. The pilot is set to begin in mid-June.",
+    "category": "benign_prose",
+    "source": "authored representative (local-government reporting shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-004",
+    "text": "A small bakery in the old quarter has become an unlikely social hub for the neighbourhood's long-time residents and newer arrivals alike. The owner, who learned the craft from her grandmother in the south, opens at five each morning and is usually sold out of the day's loaves by ten. On Saturdays a queue forms before the shutters lift. 'Bread is just a reason for people to talk,' she said. 'That's the actual business.'",
+    "category": "benign_prose",
+    "source": "authored representative (human-interest feature shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-005",
+    "text": "Wikipedia article on the Great Pacific garbage patch: The Great Pacific garbage patch is a collection of marine debris particles in the North Pacific Ocean. It is located roughly between 135°W to 155°W and 35°N to 42°N. The patch is characterised by exceptionally high relative concentrations of pelagic plastics, chemical sludge, and other debris that have been trapped by the currents of the North Pacific Gyre.",
+    "category": "benign_prose",
+    "source": "paraphrased (en.wikipedia.org/wiki/Great_Pacific_garbage_patch intro)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-006",
+    "text": "The national women's football team beat their continental rivals 3-1 in a friendly on Thursday, with two goals from the new attacking midfielder in her debut start. The coach, speaking to reporters afterwards, was cautious about reading too much into one result but acknowledged the team's possession game had improved markedly since the spring camp. The squad heads into qualifiers for next year's tournament starting in September.",
+    "category": "benign_prose",
+    "source": "authored representative (sports-reporting shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-007",
+    "text": "Blog post excerpt: I spent the weekend re-reading a novel I last opened twenty years ago. The opening pages were exactly as I remembered, which was eerie; whole paragraphs surfaced in my memory before I read them. But the middle was unrecognisable. Either I had skimmed it the first time, or my younger self had simply not had the equipment to take in what was being said. Both are probably true.",
+    "category": "benign_prose",
+    "source": "authored representative (personal-blog reflective shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-008",
+    "text": "Economists at the central bank held the benchmark interest rate steady at the policy meeting on Wednesday, noting that inflation has continued to ease toward the medium-term target while labour-market conditions remain firm. The statement flagged uncertainty around global trade conditions as the main downside risk to the outlook. Markets had largely priced in the hold; the currency moved only slightly against the dollar in the hour after the announcement.",
+    "category": "benign_prose",
+    "source": "authored representative (financial-reporting shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-009",
+    "text": "Wikipedia article on the Lascaux cave paintings: The Lascaux cave is a Palaeolithic cave situated in southwestern France, near the village of Montignac, in the department of Dordogne. It contains some of the most famous examples of Upper Palaeolithic art. These paintings are estimated to be 17,000 years old. They consist primarily of large animals, once native to the region.",
+    "category": "benign_prose",
+    "source": "paraphrased (en.wikipedia.org/wiki/Lascaux intro)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-010",
+    "text": "Travel essay excerpt: The train climbed for two hours through pine forest before breaking into the high meadow country. From the window the mountains looked closer than they were; the air had that thinness you get above two thousand metres, where distance flattens into something painted. At the station an old man was selling apples from a wooden crate, three for a coin, and a child was chasing a goat down the platform.",
+    "category": "benign_prose",
+    "source": "authored representative (travel-essay shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-011",
+    "text": "The regional hospital reopened its maternity ward this week after a six-month closure for seismic retrofitting. The renovation, which cost about €14 million and was funded jointly by the regional government and a European recovery fund, brings the 1970s structure up to current earthquake-safety standards while adding two new delivery suites and a small neonatal unit. The first baby of the reopened ward was born at 4:12 on Tuesday morning.",
+    "category": "benign_prose",
+    "source": "authored representative (local-news shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-012",
+    "text": "Recipe blog excerpt: The trick to a good carbonara is heat management. Pull the pan off the stove before you add the egg mixture; the residual warmth of the pasta is enough to thicken it without scrambling. Reserve a generous mug of pasta water — you will need it. The sauce should coat the back of a spoon but slide off again if you tilt it. Cheese first, then egg yolks, then water by the splash, off heat, mixing constantly.",
+    "category": "benign_prose",
+    "source": "authored representative (food-blog shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-013",
+    "text": "Wikipedia article on the migration of monarch butterflies: The North American monarch butterfly (Danaus plexippus) undertakes a multi-generational migration each year. Individuals from the eastern population overwinter in oyamel fir forests in the mountains of central Mexico and travel north in the spring; no single butterfly completes the full round trip, since the lifespan of most generations is only a few weeks.",
+    "category": "benign_prose",
+    "source": "paraphrased (en.wikipedia.org/wiki/Monarch_butterfly migration section)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-014",
+    "text": "Album review excerpt: The third record from the band reads less as a deliberate departure than as the natural sound of a group that has finally stopped trying to convince anyone. The arrangements are sparer than the previous album's, the vocal hook on track four is the closest the singer has come to writing a pop chorus, and the closer — six minutes of guitar feedback and a single repeated lyric — is the best thing they have ever put on tape.",
+    "category": "benign_prose",
+    "source": "authored representative (music-criticism shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-015",
+    "text": "The agricultural ministry released its annual crop forecast on Friday, projecting that the national wheat harvest will be roughly 8% below the five-year average due to a dry spring in the central growing region. Officials said reserves would buffer any short-term supply gap and that no export restrictions were under consideration. Producer associations welcomed the figures as more realistic than the more pessimistic private estimates that had circulated in March.",
+    "category": "benign_prose",
+    "source": "authored representative (agriculture-policy reporting shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-016",
+    "text": "Personal essay excerpt: I learned to drive late, at thirty-one, after years of telling myself I didn't need to. The first month I drove only at six in the morning, around an empty industrial estate, until I trusted the mirrors. The second month I drove home from the supermarket. The third I drove to the coast and back, three hours each way, listening to a single album the whole time. None of this was particularly remarkable; it was only remarkable to me.",
+    "category": "benign_prose",
+    "source": "authored representative (personal-essay shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-017",
+    "text": "Wikipedia article on the Antikythera mechanism: The Antikythera mechanism is an ancient Greek hand-powered orrery, described as the oldest example of an analogue computer used to predict astronomical positions and eclipses decades in advance. It was retrieved from the sea in 1901, and identified on 17 May 1902 as containing a gear by archaeologist Valerios Stais. The instrument is believed to have been designed and constructed by Greek scientists.",
+    "category": "benign_prose",
+    "source": "paraphrased (en.wikipedia.org/wiki/Antikythera_mechanism intro)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-018",
+    "text": "Letter to the editor (representative): I appreciated last week's coverage of the new bus route, but the article omitted what for many of us is the central question: the route bypasses the hospital. Many older residents in the eastern neighbourhood rely on the bus precisely to reach medical appointments, and the planners' decision to optimise for travel time at the expense of coverage will, I think, be regretted. I hope a future revision restores the hospital stop.",
+    "category": "benign_prose",
+    "source": "authored representative (letter-to-editor shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-019",
+    "text": "Theatre review excerpt: The new production of the play, staged in the round at a converted brewery, dispenses with the period setting and relocates the action to a contemporary call centre. The choice could have felt gimmicky; in practice it lets the script's central argument — about who is permitted to speak and who is paid to listen — land with unsettling immediacy. The lead performance is the best work I have seen the actor do.",
+    "category": "benign_prose",
+    "source": "authored representative (theatre-review shape)",
+    "expected_verdict": "clean"
+  },
+  {
+    "id": "pn-020",
+    "text": "The marine conservation foundation announced that its long-running tagging programme has now followed individual loggerhead turtles for over fifteen years, producing the longest continuous individual-level dataset for the species in the eastern Atlantic. Researchers said the data are revealing previously unknown summering grounds and will inform the next revision of regional fishing-gear regulations aimed at reducing bycatch.",
+    "category": "benign_prose",
+    "source": "authored representative (science-foundation press-release shape)",
+    "expected_verdict": "clean"
+  }
+]
