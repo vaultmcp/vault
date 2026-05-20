@@ -73,10 +73,20 @@ npm install -g @vault/mcp-proxy
 mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
 ```
 
-### Claude Code integration
+### Claude Code / Claude Desktop integration
+
+The fastest way is `vault init` — it auto-detects your existing MCP configs and wraps each server with the proxy:
+
+```bash
+npx @vault/mcp-proxy && vault-init
+```
+
+`vault init` shows a diff preview before writing, backs up the original config to `<config>.vault-backup`, and is idempotent (re-running skips already-wrapped servers). To revert: `vault-init unwrap`.
+
+Or wrap by hand:
 
 ```json
-// ~/.claude/mcp_servers.json
+// ~/.claude/mcp_settings.json (or claude_desktop_config.json)
 {
   "mcpServers": {
     "filesystem": {
@@ -90,6 +100,19 @@ mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
   }
 }
 ```
+
+### Check a server's reputation
+
+Before connecting to an MCP server, query its on-chain reputation:
+
+```bash
+vault-check https://mcp.example.com/v1
+vault-check stdio:npx
+vault-check --all              # scores every server in your MCP config
+vault-check --json | jq .      # machine-readable
+```
+
+Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer).
 
 ### HTTP/SSE mode
 

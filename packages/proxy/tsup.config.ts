@@ -4,6 +4,8 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'audit-view': 'src/cli/audit-view.ts',
+    check: 'src/cli/check.ts',
+    init: 'src/cli/init.ts',
   },
   format: ['esm'],
   target: 'node20',
