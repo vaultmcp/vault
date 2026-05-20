@@ -169,9 +169,10 @@ async function getClients(addresses: AttestationAddresses, rpcUrl: string, priva
   const accounts = await import('viem/accounts');
   const chains = await import('viem/chains');
   const account = accounts.privateKeyToAccount(privateKey);
-  // Use Base mainnet by default; callers route via rpcUrl env to point at Sepolia.
-  const wallet = viem.createWalletClient({ account, chain: chains.base, transport: viem.http(rpcUrl) });
-  const pub = viem.createPublicClient({ chain: chains.base, transport: viem.http(rpcUrl) });
+  const isSepolia = rpcUrl.includes('sepolia') || rpcUrl.includes('84532');
+  const chain = isSepolia ? chains.baseSepolia : chains.base;
+  const wallet = viem.createWalletClient({ account, chain, transport: viem.http(rpcUrl) });
+  const pub = viem.createPublicClient({ chain, transport: viem.http(rpcUrl) });
   cachedClients = { config: cacheKey, wallet, pub };
   return cachedClients;
 }
@@ -187,6 +188,7 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
   const threats = items.filter(
     (i): i is Extract<AttestationItem, { kind: 'threat' }> => i.kind === 'threat',
   );
+  process.stderr.write(`vault[attest]: submitting batch scans=${scans.length} threats=${threats.length}\n`);
 
   const multiRequests: Array<{
     schema: Hex;
@@ -221,7 +223,7 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
         recipient: ZERO_ADDR,
         expirationTime: 0n,
         revocable: false,
-        refUID: t.payload.receiptRefUID,
+        refUID: ZERO_BYTES32, // EAS validates refUID exists on-chain; receiptRefUID is in the encoded data
         data: encodeThreatRecord(t.payload),
         value: 0n,
       })),
@@ -235,8 +237,51 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
     functionName: 'multiAttest',
     args: [multiRequests],
   });
-  await pub.waitForTransactionReceipt({ hash });
-  // We don't decode UIDs here; the contract returns them but they'd require log parsing.
-  // VaultReputation can be fed via submitReceipt/submitThreat in a follow-up.
+  const receipt = await pub.waitForTransactionReceipt({ hash, confirmations: 2 });
+
+  // Parse Attested events to get UIDs, then relay to VaultReputation.
+  process.stderr.write(`vault[attest]: tx=${hash} logs=${receipt.logs.length}\n`);
+  if (addresses.vaultReputation && receipt.logs.length > 0) {
+    const viem = await import('viem');
+    const ATTESTED_TOPIC = viem.keccak256(viem.toHex('Attested(address,address,bytes32,bytes32)'));
+    const vrAbi = viem.parseAbi([
+      'function submitReceipt(bytes32 uid) external',
+      'function submitThreat(bytes32 uid) external',
+    ]);
+    const scanUids: Hex[] = [];
+    const threatUids: Hex[] = [];
+    for (const log of receipt.logs) {
+      if (log.topics[0] !== ATTESTED_TOPIC) continue;
+      const schemaUID = log.topics[3] as Hex | undefined;
+      const uid = log.data.slice(0, 66) as Hex; // first 32 bytes of data = uid
+      if (schemaUID === addresses.scanReceiptSchema) scanUids.push(uid);
+      else if (schemaUID === addresses.threatRecordSchema) threatUids.push(uid);
+    }
+    process.stderr.write(`vault[attest]: relay scanUids=${scanUids.length} threatUids=${threatUids.length}\n`);
+    // Await each receipt before the next call to avoid nonce collisions on rapid sequential txs.
+    // Check receipt.status explicitly since waitForTransactionReceipt doesn't throw on on-chain revert.
+    // The confirmations:2 wait above ensures the attestation is visible to the RPC's gas estimator.
+    for (const uid of scanUids) {
+      try {
+        const h = await wallet.writeContract({ address: addresses.vaultReputation, abi: vrAbi, functionName: 'submitReceipt', args: [uid] });
+        const r = await pub.waitForTransactionReceipt({ hash: h });
+        if (r.status === 'reverted') throw new Error(`tx ${h} reverted`);
+        process.stderr.write(`vault[attest]: submitReceipt(${uid}) ok\n`);
+      } catch (e) {
+        process.stderr.write(`vault[attest]: submitReceipt(${uid}) failed: ${e instanceof Error ? e.message.split('\n')[0] : String(e)}\n`);
+      }
+    }
+    for (const uid of threatUids) {
+      try {
+        const h = await wallet.writeContract({ address: addresses.vaultReputation, abi: vrAbi, functionName: 'submitThreat', args: [uid] });
+        const r = await pub.waitForTransactionReceipt({ hash: h });
+        if (r.status === 'reverted') throw new Error(`tx ${h} reverted`);
+        process.stderr.write(`vault[attest]: submitThreat(${uid}) ok\n`);
+      } catch (e) {
+        process.stderr.write(`vault[attest]: submitThreat(${uid}) failed: ${e instanceof Error ? e.message.split('\n')[0] : String(e)}\n`);
+      }
+    }
+  }
+
   return { txHash: hash, uids: [] };
 };
