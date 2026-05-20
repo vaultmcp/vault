@@ -88,36 +88,32 @@ export function CounterStrip() {
   const servers = useCountUp(stats?.serversTracked ?? 0, ready);
 
   return (
-    <section className="border-b border-line bg-bg">
-      <div className="mx-auto max-w-6xl px-6 py-6">
-        <div
-          className={`grid grid-cols-3 gap-px overflow-hidden rounded-md border border-line bg-line transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`}
-          aria-live="polite"
-        >
+    <section className="border-b border-line">
+      <div
+        className={`mx-auto max-w-6xl px-6 py-10 transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`}
+        aria-live="polite"
+      >
+        <div className="grid grid-cols-3 divide-x divide-line">
           <Cell label="scans completed" value={scans} />
           <Cell label="attacks blocked" value={blocks} />
           <Cell label="servers tracked" value={servers} />
         </div>
-        <p className="mt-3 text-center text-xs uppercase tracking-widish text-dim">
-          Powered by Base.{' '}
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-dim">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent opacity-70" />
           {stats?.explorer ? (
             <a
               href={stats.explorer}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-dim underline decoration-dotted hover:text-accent"
+              className="hover:text-accent transition-colors"
             >
-              Attestations live on basescan ↗
+              live attestations on Base Sepolia ↗
             </a>
           ) : (
-            <span>Attestations live on basescan.</span>
+            <span>attestations on Base · EAS</span>
           )}
-          {error && (
-            <span className="ml-2 text-bad" title={error}>
-              · (live data temporarily unavailable)
-            </span>
-          )}
-        </p>
+          {error && <span className="text-bad ml-2">· (chain data unavailable)</span>}
+        </div>
       </div>
     </section>
   );
@@ -125,8 +121,8 @@ export function CounterStrip() {
 
 function Cell({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-panel px-4 py-6 text-center">
-      <div className="font-mono text-3xl font-bold tabular-nums text-accent md:text-4xl">
+    <div className="px-8 py-2 text-center first:pl-0 last:pr-0">
+      <div className="font-mono text-4xl font-bold tabular-nums text-accent md:text-5xl glow-accent-sm">
         {formatNumber(value)}
       </div>
       <div className="mt-2 text-xs uppercase tracking-widish text-dim">{label}</div>

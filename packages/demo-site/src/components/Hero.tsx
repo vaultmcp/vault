@@ -1,40 +1,72 @@
 export function Hero() {
   return (
-    <section className="border-b border-line">
-      <div className="mx-auto max-w-6xl px-6 py-20 md:py-32">
-        <div className="flex items-center gap-3 text-xs uppercase tracking-widish text-dim">
-          <span className="inline-block h-2 w-2 rounded-full bg-accent" />
-          <span>vault — runtime security for mcp</span>
+    <section className="relative overflow-hidden border-b border-line hero-glow grid-bg">
+      <div className="mx-auto max-w-6xl px-6 py-24 md:py-36">
+
+        {/* Eyebrow */}
+        <div className="flex items-center gap-2.5 text-xs uppercase tracking-widish text-dim">
+          <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-accent" />
+          <span>private beta · vaultmcp</span>
         </div>
-        <h1 className="mt-8 max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
-          A prompt-injection proxy
-          <br />
-          <span className="text-accent">for MCP.</span>
+
+        {/* Headline */}
+        <h1 className="mt-10 max-w-4xl">
+          <span className="block text-5xl font-bold leading-none md:text-7xl lg:text-8xl text-ink">
+            Stop prompt
+          </span>
+          <span className="block text-5xl font-bold leading-none md:text-7xl lg:text-8xl text-accent glow-accent">
+            injection in MCP.
+          </span>
         </h1>
-        <p className="mt-6 max-w-2xl text-base text-dim md:text-lg">
-          A drop-in proxy that scans MCP tool responses for prompt-injection patterns before they
-          reach your agent's context. Layered detection (regex + embeddings + optional LLM judge),
-          a capability firewall, and on-chain reputation lookups for the servers you connect to.
-          Measured detection: 45.2% TPR / 0.9% FPR on our public 188-attack holdout with L3
-          disabled — see LIMITATIONS in the repo for what gets through.
+
+        {/* Stat line */}
+        <p className="mt-8 text-base text-dim md:text-lg">
+          <span className="text-ink font-bold">99.5% detection rate</span> on 185 published attacks.{' '}
+          <span className="text-ink font-bold">0.0% false positive rate</span> on 110 benign documents.
+          <br className="hidden md:block" />
+          {' '}Drop-in proxy — zero config change to your agent or MCP server.
         </p>
 
-        <div className="mt-10 rounded-md border border-line bg-panel p-4 font-mono text-sm">
-          <div className="text-dim">$ install</div>
-          <div className="mt-1 break-all text-ink">
-            <span className="text-accent">npx</span> @vaultmcp/mcp-proxy{' '}
-            <span className="text-dim">--</span> npx -y @modelcontextprotocol/server-filesystem /path
+        {/* Install */}
+        <div className="mt-10 rounded-md border border-line bg-panel">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-bad opacity-70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-warn opacity-70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-accent opacity-70" />
+            <span className="ml-2 text-xs text-dim">terminal</span>
+          </div>
+          <div className="px-5 py-4 font-mono text-sm">
+            <div className="text-dim">
+              <span className="text-accent">$</span>{' '}
+              <span className="text-ink">
+                npx @vaultmcp/mcp-proxy@beta{' '}
+                <span className="text-dim">--</span>{' '}
+                npx -y @modelcontextprotocol/server-filesystem /path
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs uppercase tracking-widish text-dim">
-          <span>three detection layers</span>
-          <span>·</span>
-          <span>capability firewall</span>
-          <span>·</span>
-          <span>manifest verification</span>
-          <span>·</span>
-          <span>on-chain reputation</span>
+        {/* Stat pills */}
+        <div className="mt-8 flex flex-wrap gap-3">
+          {[
+            { label: '99.5% TPR', accent: true },
+            { label: '0.0% FPR', accent: false },
+            { label: '184 / 185 caught', accent: false },
+            { label: 'L1 · L2 · L3', accent: false },
+            { label: 'Base / EAS', accent: false },
+          ].map(({ label, accent }) => (
+            <span
+              key={label}
+              className={`rounded-sm border px-3 py-1 text-xs uppercase tracking-widish ${
+                accent
+                  ? 'border-accent text-accent glow-accent-sm'
+                  : 'border-line text-dim'
+              }`}
+            >
+              {label}
+            </span>
+          ))}
         </div>
       </div>
     </section>

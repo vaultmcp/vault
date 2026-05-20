@@ -10,7 +10,7 @@ html,
 body {
   background: #050505;
   color: #e8e8e8;
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono), 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -19,7 +19,46 @@ body {
   color: #050505;
 }
 
-.scan-line {
-  background-image: linear-gradient(transparent 50%, rgba(0, 255, 102, 0.03) 50%);
-  background-size: 100% 4px;
+/* Accent glow */
+.glow-accent {
+  text-shadow: 0 0 40px rgba(0, 255, 102, 0.35), 0 0 80px rgba(0, 255, 102, 0.15);
+}
+
+.glow-accent-sm {
+  text-shadow: 0 0 20px rgba(0, 255, 102, 0.4);
+}
+
+/* Radial hero glow */
+.hero-glow {
+  background: radial-gradient(ellipse 70% 50% at 20% 40%, rgba(0, 255, 102, 0.06) 0%, transparent 70%);
+}
+
+/* Pulsing dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '▋';
+  animation: blink 1.1s step-end infinite;
+  color: #00ff66;
+}
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
