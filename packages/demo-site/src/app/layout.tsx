@@ -3,19 +3,22 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://vaultmcp.io'),
-  title: 'Vault — MCP runtime security',
-  description: 'The security layer for the agent web. MCP is wide open. We close it.',
+  title: 'Vault — MCP prompt-injection proxy',
+  description:
+    'Drop-in proxy that scans MCP tool responses for prompt-injection patterns. Layered detection, capability firewall, on-chain reputation. 45.2% TPR / 0.9% FPR measured on a public holdout (L3 disabled); see repo LIMITATIONS for what gets through.',
   openGraph: {
-    title: 'Vault — MCP runtime security',
-    description: 'Drop-in proxy that scans every MCP tool response for prompt injection.',
+    title: 'Vault — MCP prompt-injection proxy',
+    description:
+      'Drop-in proxy that scans MCP tool responses for prompt-injection patterns. Layered detection, capability firewall, on-chain reputation.',
     url: 'https://vaultmcp.io',
     siteName: 'Vault',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vault — MCP runtime security',
-    description: 'MCP is wide open. We close it.',
+    title: 'Vault — MCP prompt-injection proxy',
+    description:
+      'Layered prompt-injection detection for MCP tool responses. 45.2% TPR / 0.9% FPR on our public holdout with L3 disabled.',
     site: '@vaultmcpbase',
   },
 };

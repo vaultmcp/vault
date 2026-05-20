@@ -1,10 +1,10 @@
 # Vault — MCP Prompt Injection Proxy
 
-> **MCP is wide open. We close it.**
-
 **Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **Twitter/X:** [@vaultmcpbase](https://x.com/vaultmcpbase)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
 
-A drop-in proxy that scans every MCP tool response for prompt injection before your agent reasons on it. Three detection layers, a capability firewall, manifest verification, and on-chain reputation for every server you connect to.
+A drop-in proxy that scans MCP tool responses for prompt-injection patterns before they reach your agent's context window. Layered detection (regex + embedding similarity + optional LLM judge), an opt-in capability firewall, manifest drift verification, and on-chain reputation lookups for the servers you connect to.
+
+Vault is a defense-in-depth layer. It does not catch every prompt-injection attack: measured detection on our public holdout is **45.2% TPR / 0.9% FPR with L3 disabled** (see [Measured performance](#measured-performance) and [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) for what gets through).
 
 ```bash
 # Wrap any MCP server — zero config change to your agent
@@ -13,9 +13,42 @@ npx @vaultmcp/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path/
 
 ---
 
+## Measured performance
+
+All numbers below are reproducible from the harness committed in this repo. Each is footnoted with the commit and dataset it was measured on.
+
+| metric | value | source |
+|---|---|---|
+| True positive rate (attacks caught) | **45.2%** (85 / 188) | [^holdout] |
+| False positive rate (benign flagged) | **0.9%** (1 / 110) | [^holdout] |
+| L1 latency (p50 / p99) | 0.02 ms / 0.53 ms | [^holdout] |
+| L2 latency (p50 / p99) | 8.29 ms / 53.06 ms | [^holdout] |
+| Sustained throughput (single proxy) | 100 req/s, 0 errors over 30,000 requests | [^load] |
+| Steady-state memory (RSS) | 135–180 MB after warmup, no leak observed | [^load] |
+| 500 KB response scan time | ~25 s (embedder-bound, see LIMITATIONS §14) | [^edge] |
+
+L3 (LLM judge) was **disabled** in the eval above because no `ANTHROPIC_API_KEY` was configured in the eval environment. With L3 enabled, TPR is expected to rise materially — we will publish that number once measured. The L3 latency budget is ~1 s per ambiguous response.
+
+[^holdout]: `packages/eval/results/eval-2026-05-19-2301.md` — post-P2 sprint commit. Dataset: `packages/eval/datasets/holdout-attacks/` (188 attacks across 6 categories) and `packages/eval/datasets/benign/` (110 entries across 5 categories). L3 disabled (no API key in env).
+[^load]: `packages/eval/load/report.md` — 100 req/s × 300 s × single stdio proxy instance × ~200-byte stub-MCP responses, L1+L2 only. Past 100 req/s the cliff is not yet measured.
+[^edge]: `packages/proxy/test/edge-cases.test.ts` scenario 4. The latency is bounded by the L2 embedder iterating ~140 streaming chunks; L1 stays sub-millisecond at any size. See LIMITATIONS §14.
+
+---
+
+## What Vault does NOT do
+
+Vault is **not** a complete prompt-injection solution. The detection layers raise the cost of an attack; they do not eliminate the attack class. Read these before adopting:
+
+- [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — the measured gaps: multilingual injections, tiny attacks buried in long prose, SVG/YAML structural injections, judge-prompt manipulation, normalization-induced blind spots (e.g. `mcp-server-fetch` stripping HTML comments before Vault sees them), self-referential false positives, and the 500 KB ≈ 25 s scan time.
+- [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) — what Vault assumes about its environment (LLM provider trust, operator host not compromised, attestation lag) and what an attacker still has to do even with Vault deployed.
+
+In one line: Vault catches a measured 45.2% of public-corpus attacks with L1+L2 alone, blocks zero-day variants that paraphrase outside the corpus only when L3 is enabled, and provides supply-chain signals (manifest drift, on-chain reputation) that are orthogonal to detection.
+
+---
+
 ## Why
 
-Every MCP tool response is a direct write into your agent's context window. A malicious file, a compromised API, or a poisoned search result can redirect your agent mid-task — exfiltrating secrets, overwriting files, or pivoting to other tools. MCP has no transport-level protection against this. Vault adds it.
+Every MCP tool response is a direct write into your agent's context window. A malicious file, a compromised API, or a poisoned search result can redirect your agent mid-task — exfiltrating secrets, overwriting files, or pivoting to other tools. MCP has no transport-level protection against this class. Vault adds a layered detection pass; whether that pass is sufficient for your threat model depends on the gaps documented in [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md).
 
 ## How it works
 
@@ -34,11 +67,11 @@ Agent ──► Vault Proxy ──► MCP Server
               ▼  clean → forward   malicious → block/warn
 ```
 
-**Layer 1 — Heuristics** (`<1 ms`): Regex patterns for instruction overrides, unicode tag smuggling (U+E0000–U+E007F), zero-width character density, HTML comment injection, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost.
+**Layer 1 — Heuristics** (p50 0.02 ms, p99 0.53 ms[^holdout]): Regex patterns for English instruction overrides, unicode tag smuggling (U+E0000–U+E007F), bidi-control characters (U+202A–U+202E, U+2066–U+2069), zero-width character density, HTML comment injection, long HTML-entity runs, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost. L1 is English-only; see LIMITATIONS §1.
 
-**Layer 2 — Embeddings** (`~8 ms`): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Confident matches block; borderline cases escalate to L3.
+**Layer 2 — Embeddings** (p50 8.29 ms, p99 53.06 ms[^holdout]): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Matches within distance 0.35 block; borderline cases escalate to L3. The corpus is intentionally public; adversaries who paraphrase past distance 0.35 evade L2 — that class is for L3.
 
-**Layer 3 — LLM Judge** (`~1 s`): Claude Haiku 4.5 (or GPT-4o-mini with OpenAI key) resolves ambiguous cases with structured reasoning. Only runs when L2 is uncertain — typically <5% of requests.
+**Layer 3 — LLM Judge** (~1 s when invoked): Claude Haiku 4.5 (or GPT-4o-mini with OpenAI key) resolves ambiguous cases. Only runs when L2 is uncertain — typically <5% of requests. Requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. **Without a key, L3 is disabled and TPR drops to the L1+L2 number reported above.**
 
 ### Capability Firewall
 
@@ -254,6 +287,34 @@ packages/
 
 ---
 
+## Eval methodology — how to reproduce
+
+The [Measured performance](#measured-performance) numbers above come from the harness and datasets committed in this repo. To reproduce:
+
+```bash
+# Clone and install
+git clone https://github.com/vaultmcp/vault.git
+cd vault
+pnpm install
+
+# Run the eval (L1+L2 only, no API key required)
+pnpm --filter @vaultmcp/eval run eval -- --set both
+
+# To include L3, export an API key first
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm --filter @vaultmcp/eval run eval -- --set both
+```
+
+Outputs land in `packages/eval/results/eval-<timestamp>.{md,json}`. Each run prints TPR, FPR, per-category breakdown, per-layer attribution, latency percentiles, and the worst false negatives and false positives by severity.
+
+The holdout dataset lives at `packages/eval/datasets/holdout-attacks/` — 188 entries across `published-papers`, `garak-probes`, `blog-pocs`, `owasp-llm`, `encoded-payloads`, `multi-turn`, and `roleplay-jailbreak`. The benign dataset (110 entries) lives at `packages/eval/datasets/benign/`. Both have `MANIFEST.md` files describing provenance.
+
+**Operators are encouraged to author their own attacks and submit pull requests.** Add a new file under `packages/eval/datasets/holdout-attacks/` following the existing JSON schema, update the `MANIFEST.md`, and open a PR. The harness picks new files up automatically.
+
+The self red-team (`packages/eval/red-team/`) is the other half of the honest-eval story: 38 hand-crafted bypass attempts, 9 of which still pass L1+L2 after our P2 fixes. They are categorized in [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md).
+
+---
+
 ## Development
 
 ```bash
@@ -287,7 +348,12 @@ forge build
 
 ## Security
 
-Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. The layered approach (L1 → L2 → L3) dramatically raises the bar, but operators should treat it as one layer in a broader security posture.
+Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. Measured detection on our public 188-entry holdout is **45.2% TPR / 0.9% FPR with L3 disabled**; the layered approach raises the bar, but operators should treat Vault as one layer in a broader security posture.
+
+For details:
+- [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — measured gaps, red-team evidence, and which mitigations are planned vs. accepted.
+- [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) — threats Vault defends against, threats it does not, assumptions, and what an attacker still has to do.
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting policy.
 
 To report a vulnerability: open a [GitHub Security Advisory](../../security/advisories/new) (preferred) or email the maintainer directly. We aim to triage within 48 hours and ship a patch within 7 days of a confirmed critical.
 

@@ -7,14 +7,16 @@ export function Hero() {
           <span>vault — runtime security for mcp</span>
         </div>
         <h1 className="mt-8 max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
-          MCP is wide open.
+          A prompt-injection proxy
           <br />
-          <span className="text-accent">We close it.</span>
+          <span className="text-accent">for MCP.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-base text-dim md:text-lg">
-          A drop-in proxy that scans every MCP tool response for prompt injection before your agent
-          reasons on it. Three layers of detection, a capability firewall, and a public reputation
-          score for every MCP server you connect to.
+          A drop-in proxy that scans MCP tool responses for prompt-injection patterns before they
+          reach your agent's context. Layered detection (regex + embeddings + optional LLM judge),
+          a capability firewall, and on-chain reputation lookups for the servers you connect to.
+          Measured detection: 45.2% TPR / 0.9% FPR on our public 188-attack holdout with L3
+          disabled — see LIMITATIONS in the repo for what gets through.
         </p>
 
         <div className="mt-10 rounded-md border border-line bg-panel p-4 font-mono text-sm">
