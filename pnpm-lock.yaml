@@ -8,6 +8,28 @@ importers:
 
   .: {}
 
+  packages/check:
+    dependencies:
+      viem:
+        specifier: ^2.21.0
+        version: 2.50.4(typescript@5.9.3)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.19
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.15)(tsx@4.22.3)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.0
+        version: 4.22.3
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)
+
   packages/collector:
     devDependencies:
       '@types/node':

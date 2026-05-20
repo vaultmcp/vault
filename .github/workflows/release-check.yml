@@ -1,0 +1,113 @@
+name: release vault-check binaries
+
+on:
+  push:
+    tags:
+      - 'check-v*'    # tag format: check-v0.1.0 → triggers binary build
+  workflow_dispatch:   # manual run for testing without a tag
+
+# Build matrix produces 4 binaries via @yao-pkg/pkg (maintained fork of vercel/pkg).
+# Each runner builds the binary for the platform/arch combination it's running on.
+# Cross-arch builds use pkg's --targets flag where supported.
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest        # arm64 runner
+            target: darwin-arm64
+            pkg_target: node20-macos-arm64
+          - os: macos-13            # x64 runner (last Intel macOS)
+            target: darwin-x64
+            pkg_target: node20-macos-x64
+          - os: ubuntu-latest       # x64
+            target: linux-x64
+            pkg_target: node20-linux-x64
+          - os: ubuntu-22.04-arm    # native arm64 runner if available; else cross-compile
+            target: linux-arm64
+            pkg_target: node20-linux-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with: { version: '10' }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: build check package (pure JS bundle)
+        run: pnpm --filter @vaultmcp/check build
+
+      - name: install pkg (yao-pkg fork)
+        run: npm install -g @yao-pkg/pkg
+
+      - name: build single-file binary for ${{ matrix.target }}
+        working-directory: packages/check
+        run: |
+          pkg dist/index.js \
+            --targets ${{ matrix.pkg_target }} \
+            --output vault-check-${{ matrix.target }} \
+            --compress GZip
+
+      - name: smoke test (native targets only — cross-compiled won't run on host)
+        if: matrix.target == 'linux-x64' || matrix.target == 'darwin-arm64'
+        working-directory: packages/check
+        run: ./vault-check-${{ matrix.target }} --version
+
+      - name: compute sha256
+        working-directory: packages/check
+        run: |
+          shasum -a 256 vault-check-${{ matrix.target }} > vault-check-${{ matrix.target }}.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vault-check-${{ matrix.target }}
+          path: |
+            packages/check/vault-check-${{ matrix.target }}
+            packages/check/vault-check-${{ matrix.target }}.sha256
+
+  release:
+    name: publish github release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/check-v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+
+      - name: stage release assets
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name 'vault-check-*' -o -name '*.sha256' \) \
+            -exec cp {} release/ \;
+          ls -la release/
+
+      - name: create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          name: vault-check ${{ github.ref_name }}
+          body: |
+            Standalone `vault-check` binaries for darwin/linux × arm64/x64.
+
+            Install via:
+              curl -fsSL https://vaultmcp.io/install.sh | sh
+
+            Or download a binary directly and `chmod +x` it.
+
+            SHA-256 sums included alongside each binary.

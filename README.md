@@ -105,14 +105,25 @@ Or wrap by hand:
 
 ### Check a server's reputation
 
-Before connecting to an MCP server, query its on-chain reputation:
+Before connecting to an MCP server, query its on-chain reputation. Three install paths — pick whichever fits:
 
 ```bash
+# (a) via npx (no install)
+npx @vaultmcp/check stdio:npx:@modelcontextprotocol/server-filesystem
+
+# (b) via Homebrew
+brew tap vaultmcp/tap && brew install vault-check
+
+# (c) via curl — standalone binary, no Node required
+curl -fsSL https://vaultmcp.io/install.sh | sh
+
+# Then:
 vault-check https://mcp.example.com/v1
-vault-check stdio:npx
-vault-check --all              # scores every server in your MCP config
+vault-check --all              # scores every server in your MCP config(s)
 vault-check --json | jq .      # machine-readable
 ```
+
+If you've installed `@vaultmcp/mcp-proxy`, the proxy ships its own `vault-check` binary identical to the standalone — no need to install both.
 
 Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer).
 

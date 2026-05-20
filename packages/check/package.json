@@ -1,0 +1,44 @@
+{
+  "name": "@vaultmcp/check",
+  "version": "0.0.1",
+  "description": "Look up an MCP server's on-chain Vault reputation score. Reads Base via viem. No key needed.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "vault-check": "./dist/index.js",
+    "vault-check-standalone": "./dist/index.js"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prompt-injection",
+    "security",
+    "reputation",
+    "base",
+    "eas",
+    "ethereum-attestation-service",
+    "vault"
+  ],
+  "homepage": "https://vaultmcp.io",
+  "repository": { "type": "git", "url": "https://github.com/vaultmcp/vault" },
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}
