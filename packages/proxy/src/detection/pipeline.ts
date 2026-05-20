@@ -4,6 +4,7 @@ import { runLayer3 } from './layer3-judge.js';
 import { Layer3Unavailable } from './clients/types.js';
 import type { JudgeContext } from './clients/types.js';
 import type { DetectionResult } from './types.js';
+import { runStreamingPipeline, readStreamThreshold } from './streaming.js';
 
 const L1_MALICIOUS_SHORT_CIRCUIT = 0.85;
 const L2_DEFAULT_THRESHOLD = 0.35;
@@ -17,6 +18,13 @@ function readL2Threshold(): number {
 }
 
 export async function runPipeline(text: string, context?: JudgeContext): Promise<DetectionResult> {
+  // Large payloads → streaming pipeline (chunked L2 with short-circuit). The streaming
+  // function recursively calls back to runPipeline for sub-threshold inputs, so it's
+  // safe to gate here.
+  if (text.length >= readStreamThreshold()) {
+    return runStreamingPipeline(text, context);
+  }
+
   const l1 = runLayer1(text);
 
   // Layer 1 is confident this is malicious — done.
