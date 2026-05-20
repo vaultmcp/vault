@@ -52,6 +52,9 @@ importers:
 
   packages/demo-site:
     dependencies:
+      '@vaultmcp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       next:
         specifier: ^15.0.3
         version: 15.5.18(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -61,6 +64,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.6(react@19.2.6)
+      viem:
+        specifier: ^2.21.0
+        version: 2.50.4(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -83,6 +89,9 @@ importers:
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)
 
   packages/eval:
     dependencies:

@@ -116,6 +116,29 @@ vault-check --json | jq .      # machine-readable
 
 Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer).
 
+### Add a reputation badge to your MCP server's README
+
+If you maintain an MCP server, embed its live Vault reputation score as a badge — same shape as shields.io. The badge updates automatically as new attestations land on-chain.
+
+```markdown
+![Vault Score](https://vaultmcp.io/badge/your-server-name.svg)
+```
+
+Replace `your-server-name` with the identifier Vault uses for your server — typically the package name (e.g. `@modelcontextprotocol/server-filesystem`) for npm-launched servers, or the full URL for HTTP/SSE servers. Servers with no attestations yet render as a neutral "unranked" badge.
+
+### Public reputation API
+
+CORS-open, no-auth read endpoints backed by the same on-chain data:
+
+| Endpoint | Returns |
+|---|---|
+| `GET https://vaultmcp.io/api/score/:server` | Single server's score, scans, blocks, basescan link |
+| `GET https://vaultmcp.io/api/leaderboard?n=10` | Top N servers by scan count |
+| `GET https://vaultmcp.io/api/threats/recent?n=20` | Recent ThreatRecord attestations |
+| `GET https://vaultmcp.io/badge/:server.svg` | SVG reputation badge |
+
+All endpoints accept an optional `?network=base|base-sepolia` query parameter. Cache headers are set; expect 60s edge cache.
+
 ### HTTP/SSE mode
 
 ```bash
