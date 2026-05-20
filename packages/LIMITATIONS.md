@@ -108,6 +108,52 @@ servers to return raw HTML rather than rendered Markdown when the operator
 wants Vault to see all hidden content. We will document this in
 `SECURITY_MODEL.md`.
 
+### 13. No request-level timeout; upstream hang or crash propagates as-is
+The stdio proxy is intentionally transparent: every line on the child's stdout is
+forwarded (after scanning) to the agent's stdout, with no per-request timer. If the
+upstream MCP server hangs on a tool call, Vault hangs too — the agent must apply
+its own timeout. If the upstream exits unexpectedly (crash, OOM, killed), the
+proxy's `child.on('exit')` handler propagates the same exit code and the agent
+sees stdin/stdout close. Vault does NOT synthesize a JSON-RPC error response for
+in-flight requests.
+
+We chose this over inventing a timeout because:
+
+- The MCP protocol does not yet specify a request-cancellation channel, so a
+  timeout in Vault would orphan the upstream call.
+- Agents (Claude Desktop, Cursor, custom code) already implement their own
+  timeouts; doubling them up adds confusion without protection.
+- Tool calls can legitimately take minutes (e.g. a long-running search). Vault
+  cannot distinguish "hang" from "slow".
+
+**Evidence:** `packages/proxy/test/edge-cases.test.ts` scenarios 1 (crash
+mid-response) and 2 (hang) assert this behavior directly.
+
+**Status:** Open. The agent-side timeout is the right layer for now. A future
+opt-in `VAULT_UPSTREAM_TIMEOUT_MS` is on the v2 list.
+
+### 14. Large payload scanning is bounded by the embedder, not the network
+A 500 KB clean response takes ~25 seconds to scan end-to-end on commodity hardware
+(L1 once, L2 over ~140 streaming chunks at 4 KB window / 512 B overlap). Vault
+forwards the content intact and does not crash, leak, or truncate — but the latency
+is bounded by the L2 embedder, not the underlying I/O. Two mitigations exist today:
+
+- **Raise `VAULT_STREAM_THRESHOLD`** to skip chunking entirely and pay one L2
+  pass on the full text (`bge-small-en-v1.5` truncates to ~512 tokens internally,
+  so the embedding describes only the first ~2 KB; a paraphrased injection past
+  that boundary is invisible to L2 — but L1 still runs on the full text and is
+  cheap at any size).
+- **Run multiple proxy instances** behind a router if you serve many concurrent
+  large-payload tools.
+
+**Evidence:** `packages/proxy/test/edge-cases.test.ts` scenario 4 records 25.3 s
+elapsed for a 500 KB scan. The 5-minute / 100 rps load test at
+`packages/eval/load/report.md` is on a different workload (~200 B responses) and
+runs at p50 ≈ 8 ms — these two numbers should not be conflated.
+
+**Status:** Open. Sentence-level chunking (smaller, semantically-aligned windows)
+is on the v2 roadmap; it would help latency *and* the dilution issue from §3.
+
 ### 12. False positives when Vault scans its own source repo (or similar)
 Self-referential FPs: a Vault-protected agent that browses Vault's own commit
 history or test fixtures will see attack-vocabulary verbatim (commit messages
