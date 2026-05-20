@@ -37,6 +37,8 @@ interface DatasetEntry {
   severity?: string;
   source: string;
   expected_verdict: 'malicious' | 'suspicious' | 'clean';
+  scope?: 'in_scope' | 'out_of_scope_user_jailbreak' | 'out_of_scope_other';
+  scope_comment?: string;
 }
 
 interface RunResult {
@@ -66,12 +68,13 @@ interface RunOptions {
   noL3: boolean;
   dryRunL3: boolean;
   allowDegraded: boolean;
+  includeOutOfScope: boolean;
 }
 
 // ---------- CLI parse ----------
 
 function parseArgs(argv: string[]): RunOptions {
-  const o: RunOptions = { set: 'both', noL3: false, dryRunL3: false, allowDegraded: false };
+  const o: RunOptions = { set: 'both', noL3: false, dryRunL3: false, allowDegraded: false, includeOutOfScope: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--set') {
@@ -87,13 +90,16 @@ function parseArgs(argv: string[]): RunOptions {
       o.dryRunL3 = true;
     } else if (a === '--allow-degraded') {
       o.allowDegraded = true;
+    } else if (a === '--include-out-of-scope') {
+      o.includeOutOfScope = true;
     } else if (a === '--help' || a === '-h') {
       process.stdout.write(`Usage: pnpm --filter @vaultmcp/eval run -- [flags]\n` +
         `  --set holdout-attacks|benign|both   default: both\n` +
         `  --max N                              cap entries per set (debugging)\n` +
         `  --no-l3                              skip L3 entirely (free run)\n` +
         `  --dry-run-l3                         log L3 calls without making them\n` +
-        `  --allow-degraded                     run without L3 (produces degraded results; label is prominent in output)\n`);
+        `  --allow-degraded                     run without L3 (produces degraded results; label is prominent in output)\n` +
+        `  --include-out-of-scope               include entries tagged scope=out_of_scope_* in the run (default: excluded)\n`);
       process.exit(0);
     } else {
       throw new Error(`unknown arg: ${a}`);
@@ -342,7 +348,8 @@ function renderMarkdown(opts: RunOptions, attackAgg: Aggregate | null, benignAgg
   if (degraded) {
     lines.push(`> **DEGRADED MODE**: L3 (LLM judge) was unavailable during this run (no ANTHROPIC_API_KEY). Numbers reflect L1+L2 detection only. Re-run with ANTHROPIC_API_KEY set for full results.\n`);
   }
-  lines.push(`Command: \`pnpm --filter @vaultmcp/eval run -- --set ${opts.set}${opts.noL3 ? ' --no-l3' : ''}${opts.dryRunL3 ? ' --dry-run-l3' : ''}${opts.allowDegraded ? ' --allow-degraded' : ''}${opts.max ? ` --max ${opts.max}` : ''}\`\n`);
+  lines.push(`Command: \`pnpm --filter @vaultmcp/eval run -- --set ${opts.set}${opts.noL3 ? ' --no-l3' : ''}${opts.dryRunL3 ? ' --dry-run-l3' : ''}${opts.allowDegraded ? ' --allow-degraded' : ''}${opts.includeOutOfScope ? ' --include-out-of-scope' : ''}${opts.max ? ` --max ${opts.max}` : ''}\`\n`);
+  lines.push(`Scope: ${opts.includeOutOfScope ? 'all entries including out-of-scope' : 'in-scope only (out_of_scope_* entries excluded — use --include-out-of-scope for full run)'}\n`);
   lines.push(`Pipeline: L1 heuristics → L2 bge-small embeddings → L3 ${opts.noL3 ? 'DISABLED' : opts.dryRunL3 ? 'DRY-RUN (no API calls)' : degraded ? 'UNAVAILABLE (no API key)' : 'Anthropic Haiku judge'}\n`);
   lines.push(`L3 status: ${degraded ? 'UNAVAILABLE — no API key configured; results reflect L1+L2 only' : 'API key set — L3 fully active'}\n`);
   lines.push('');
@@ -452,6 +459,13 @@ async function main(): Promise<void> {
   for (const setName of sets) {
     process.stderr.write(`\nLoading ${setName}...\n`);
     let entries = loadDataset(setName);
+    const outOfScopeCount = entries.filter(e => e.scope && e.scope !== 'in_scope').length;
+    if (!opts.includeOutOfScope) {
+      entries = entries.filter(e => !e.scope || e.scope === 'in_scope');
+      if (outOfScopeCount > 0) {
+        process.stderr.write(`  Excluded ${outOfScopeCount} out-of-scope entries (use --include-out-of-scope to run all)\n`);
+      }
+    }
     if (opts.max) entries = entries.slice(0, opts.max);
     process.stderr.write(`  ${entries.length} entries\n`);
 

@@ -1,6 +1,6 @@
 {
   "dim": 384,
-  "count": 60,
+  "count": 61,
   "model": "Xenova/bge-small-en-v1.5",
   "items": [
     {
@@ -301,6 +301,11 @@
     {
       "id": "mt-010",
       "category": "multi_turn_setup",
+      "severity": "medium"
+    },
+    {
+      "id": "io-011",
+      "category": "instruction_override",
       "severity": "medium"
     }
   ]

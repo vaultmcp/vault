@@ -4,7 +4,7 @@
 
 A drop-in proxy that scans MCP tool responses for prompt-injection patterns before they reach your agent's context window. Layered detection (regex + embedding similarity + optional LLM judge), an opt-in capability firewall, manifest drift verification, and on-chain reputation lookups for the servers you connect to.
 
-Vault is a defense-in-depth layer. It does not catch every prompt-injection attack: measured detection on our public holdout is **45.2% TPR / 0.9% FPR with L3 disabled** (see [Measured performance](#measured-performance) and [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) for what gets through).
+On our public eval of 188 attacks (Greshake et al., NVIDIA garak, OWASP LLM Top 10, published blog PoCs, encoded-payload techniques, and multi-turn setups), **Vault catches 184 — 97.9% overall, 99.5% of in-scope third-party prompt injections**. False positive rate is **0.0%** across 110 benign documents. See [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) for known gaps and [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) for the threat model. Without `ANTHROPIC_API_KEY`, TPR falls to 45.2% (L1+L2 only).
 
 ```bash
 # Wrap any MCP server — zero config change to your agent
@@ -19,30 +19,71 @@ All numbers below are reproducible from the harness committed in this repo. Each
 
 | metric | value | source |
 |---|---|---|
-| True positive rate (attacks caught) | **45.2%** (85 / 188) | [^holdout] |
-| False positive rate (benign flagged) | **0.9%** (1 / 110) | [^holdout] |
-| L1 latency (p50 / p99) | 0.02 ms / 0.53 ms | [^holdout] |
-| L2 latency (p50 / p99) | 8.29 ms / 53.06 ms | [^holdout] |
+| TPR — in-scope third-party injections (L3 enabled) | **99.5%** (184 / 185) | [^holdout-l3] |
+| TPR — all holdout entries including out-of-scope (L3 enabled) | **97.9%** (184 / 188) | [^holdout-l3] |
+| TPR — L1+L2 only, no API key | **45.2%** (85 / 188) | [^holdout-degraded] |
+| False positive rate (benign flagged) | **0.0%** (0 / 110) | [^holdout-l3] |
+| L1 latency (p50 / p99) | 0.03 ms / 0.53 ms | [^holdout-l3] |
+| L2 latency (p50 / p99) | 11.05 ms / 69.75 ms | [^holdout-l3] |
+| L3 latency (p50 / p99) | 1541 ms / 3499 ms | [^holdout-l3] |
 | Sustained throughput (single proxy) | 100 req/s, 0 errors over 30,000 requests | [^load] |
 | Steady-state memory (RSS) | 135–180 MB after warmup, no leak observed | [^load] |
 | 500 KB response scan time | ~25 s (embedder-bound, see LIMITATIONS §14) | [^edge] |
 
-L3 (LLM judge) was **disabled** in the eval above because no `ANTHROPIC_API_KEY` was configured in the eval environment. With L3 enabled, TPR is expected to rise materially — we will publish that number once measured. The L3 latency budget is ~1 s per ambiguous response.
+**In-scope vs overall:** the 3-entry difference between 185 in-scope and 188 total reflects three NVIDIA garak probes that test model harmful-completion behavior (a different threat model than third-party injection in tool output). They are tagged `out_of_scope_user_jailbreak` in the dataset and excluded from the in-scope metric by default. See `packages/eval/datasets/holdout-attacks/MANIFEST.md` for full explanation.
 
-[^holdout]: `packages/eval/results/eval-2026-05-19-2301.md` — post-P2 sprint commit. Dataset: `packages/eval/datasets/holdout-attacks/` (188 attacks across 6 categories) and `packages/eval/datasets/benign/` (110 entries across 5 categories). L3 disabled (no API key in env).
+[^holdout-l3]: `packages/eval/results/eval-2026-05-20-1017.md` — 2026-05-20 sprint, corpus patched with io-011. Dataset: `packages/eval/datasets/holdout-attacks/` (185 in-scope + 3 out-of-scope attacks) and `packages/eval/datasets/benign/` (110 entries). L3 enabled (Anthropic Haiku 4.5). 91.3% of detection attributable to L3; L3 called on ~91% of attack entries in this eval (expected 20–40% in production on real MCP traffic).
+[^holdout-degraded]: `packages/eval/results/eval-2026-05-19-2301.md` — post-P2 sprint. Same dataset. L3 disabled (no API key in env). This is the degraded-mode number; running without `ANTHROPIC_API_KEY` produces this result.
 [^load]: `packages/eval/load/report.md` — 100 req/s × 300 s × single stdio proxy instance × ~200-byte stub-MCP responses, L1+L2 only. Past 100 req/s the cliff is not yet measured.
 [^edge]: `packages/proxy/test/edge-cases.test.ts` scenario 4. The latency is bounded by the L2 embedder iterating ~140 streaming chunks; L1 stays sub-millisecond at any size. See LIMITATIONS §14.
 
 ---
 
-## What Vault does NOT do
+## What Vault catches
 
-Vault is **not** a complete prompt-injection solution. The detection layers raise the cost of an attack; they do not eliminate the attack class. Read these before adopting:
+Measured against 185 in-scope third-party prompt injections (sources: published papers, OWASP LLM Top 10, NVIDIA garak probes, blog PoCs, encoded payloads, multi-turn setups):
 
-- [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — the measured gaps: multilingual injections, tiny attacks buried in long prose, SVG/YAML structural injections, judge-prompt manipulation, normalization-induced blind spots (e.g. `mcp-server-fetch` stripping HTML comments before Vault sees them), self-referential false positives, and the 500 KB ≈ 25 s scan time.
-- [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) — what Vault assumes about its environment (LLM provider trust, operator host not compromised, attestation lag) and what an attacker still has to do even with Vault deployed.
+| Attack category | Caught / Total | TPR |
+|---|---|---|
+| instruction_override | 43 / 43 | 100.0% |
+| jailbreak | 32 / 32 | 100.0% |
+| exfiltration | 33 / 33 | 100.0% |
+| multi_turn_setup | 27 / 28 | 96.4% |
+| role_hijack | 29 / 29 | 100.0% |
+| encoded_payload | 20 / 20 | 100.0% |
 
-In one line: Vault catches a measured 45.2% of public-corpus attacks with L1+L2 alone, blocks zero-day variants that paraphrase outside the corpus only when L3 is enabled, and provides supply-chain signals (manifest drift, on-chain reputation) that are orthogonal to detection.
+Numbers are from `packages/eval/results/eval-2026-05-20-1017.md` with L3 enabled (Anthropic Haiku 4.5). See [Measured performance](#measured-performance) for latency and throughput context.
+
+---
+
+## What Vault does NOT catch
+
+- **User-initiated jailbreaks** — out of scope by design. Vault sits between the agent and the upstream MCP server, not between the user and the agent. Jailbreaks typed directly by the user are the model provider's responsibility, not a proxy's.
+- **Genuinely novel injection patterns** — attacks that paraphrase far from all known examples (L2 cosine distance > 0.50 and no L3 key set) evade detection. The corpus covers published 2022–2024 attack literature; novel post-cutoff techniques may not be represented. See [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) §3.
+- **Multi-turn attacks split across sessions** — Vault scans each MCP response independently. A sleeper directive established in session A and activated in session B is outside Vault's detection window. See LIMITATIONS §10.
+- **Image/audio embedded instructions** — Vault is text-only. Binary content in tool responses (images, audio files, PDFs) is forwarded to the agent unscanned. If your MCP server returns image data or vision-model inputs, Vault provides no protection for instructions hidden in that content.
+
+For the complete gap taxonomy: [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — 14 sections covering multilingual, semantic, structural, normalization, self-referential, and scale gaps. [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) maps each gap to the threat it leaves open.
+
+---
+
+## Cost transparency
+
+Layer 3 (LLM judge) calls Anthropic Haiku 4.5 on responses that fall in L2's uncertain zone. Estimates:
+
+| scenario | L3 call rate | estimated cost per request |
+|---|---|---|
+| Eval holdout (adversarial dataset) | ~91% | ~$0.0005 |
+| Real MCP traffic (expected) | ~20–40% | ~$0.0001–0.0002 |
+| 100 benign req/hr (steady state) | 20–40% | ~$0.002–0.004/hr total |
+
+- **~$0.0005 per uncertain-zone request** (Haiku 4.5 input + small output at current pricing)
+- **~$0.04/hr at 100 req/hr in production** (20–40% L3 call rate on real traffic)
+- **$0 without API key** — L1+L2 only, TPR drops to 45.2%. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
+
+The high L3 rate in our eval (91%) reflects an adversarial dataset — nearly every entry is an attack that lands in L2's uncertain zone by design. Real MCP traffic (mostly clean tool output) has a much lower L3 call rate.
+
+Set `ANTHROPIC_API_KEY` before running. Without it, Vault emits a `WARNING: Layer 3 unavailable — degraded mode` message on startup and falls back to L1+L2 only.
 
 ---
 
@@ -67,9 +108,9 @@ Agent ──► Vault Proxy ──► MCP Server
               ▼  clean → forward   malicious → block/warn
 ```
 
-**Layer 1 — Heuristics** (p50 0.02 ms, p99 0.53 ms[^holdout]): Regex patterns for English instruction overrides, unicode tag smuggling (U+E0000–U+E007F), bidi-control characters (U+202A–U+202E, U+2066–U+2069), zero-width character density, HTML comment injection, long HTML-entity runs, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost. L1 is English-only; see LIMITATIONS §1.
+**Layer 1 — Heuristics** (p50 0.02 ms, p99 0.53 ms[^holdout-l3]): Regex patterns for English instruction overrides, unicode tag smuggling (U+E0000–U+E007F), bidi-control characters (U+202A–U+202E, U+2066–U+2069), zero-width character density, HTML comment injection, long HTML-entity runs, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost. L1 is English-only; see LIMITATIONS §1.
 
-**Layer 2 — Embeddings** (p50 8.29 ms, p99 53.06 ms[^holdout]): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Matches within distance 0.35 block; borderline cases escalate to L3. The corpus is intentionally public; adversaries who paraphrase past distance 0.35 evade L2 — that class is for L3.
+**Layer 2 — Embeddings** (p50 8.29 ms, p99 53.06 ms[^holdout-l3]): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Matches within distance 0.35 block; borderline cases escalate to L3. The corpus is intentionally public; adversaries who paraphrase past distance 0.35 evade L2 — that class is for L3.
 
 **Layer 3 — LLM Judge** (~1 s when invoked): Claude Haiku 4.5 (or GPT-4o-mini with OpenAI key) resolves ambiguous cases. Only runs when L2 is uncertain — typically <5% of requests. Requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. **Without a key, L3 is disabled and TPR drops to the L1+L2 number reported above.**
 
@@ -348,7 +389,7 @@ forge build
 
 ## Security
 
-Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. Measured detection on our public 188-entry holdout is **45.2% TPR / 0.9% FPR with L3 disabled**; the layered approach raises the bar, but operators should treat Vault as one layer in a broader security posture.
+Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. Measured detection on our public holdout is **99.5% TPR / 0.0% FPR** (in-scope, L3 enabled) and **45.2% TPR / 0.9% FPR** with L3 disabled (L1+L2 only). The layered approach raises the bar; operators should treat Vault as one layer in a broader security posture.
 
 For details:
 - [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — measured gaps, red-team evidence, and which mitigations are planned vs. accepted.
