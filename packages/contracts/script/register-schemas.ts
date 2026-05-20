@@ -4,7 +4,7 @@
 //
 // Usage:
 //   DEPLOYER_PRIVATE_KEY=0x... VAULT_RPC_URL=https://... \
-//   pnpm --filter @vault/contracts register:schemas base-sepolia
+//   pnpm --filter @vaultmcp/contracts register:schemas base-sepolia
 //
 // We use viem directly (not @ethereum-attestation-service/eas-sdk) to avoid pulling ethers.js
 // into the toolchain — the SchemaRegistry.register surface is tiny.

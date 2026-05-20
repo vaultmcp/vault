@@ -1,4 +1,4 @@
-import { loadCorpus, type LoadedCorpus } from '@vault/corpus';
+import { loadCorpus, type LoadedCorpus } from '@vaultmcp/corpus';
 import type { DetectionResult } from './types.js';
 
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';

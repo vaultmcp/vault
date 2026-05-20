@@ -9,7 +9,7 @@ export function loadCorpus() {
   const binPath = path.join(here, 'embeddings.bin');
   if (!existsSync(metaPath) || !existsSync(binPath)) {
     throw new Error(
-      'vault/corpus: embeddings missing — run `pnpm --filter @vault/corpus build` first',
+      'vault/corpus: embeddings missing — run `pnpm --filter @vaultmcp/corpus build` first',
     );
   }
   const meta = JSON.parse(readFileSync(metaPath, 'utf8'));

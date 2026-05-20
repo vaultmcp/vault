@@ -2,7 +2,7 @@
 // inputs and prints the verdict + confidence + reasoning for each. Manual eyeballing
 // not assertions — the judge is non-deterministic and we don't want flaky CI.
 //
-// Run: ANTHROPIC_API_KEY=sk-ant-... pnpm --filter @vault/mcp-proxy tsx bench/layer3-validate.ts
+// Run: ANTHROPIC_API_KEY=sk-ant-... pnpm --filter @vaultmcp/mcp-proxy tsx bench/layer3-validate.ts
 
 import { runLayer3 } from '../src/detection/layer3-judge.js';
 

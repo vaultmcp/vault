@@ -13,7 +13,7 @@
     "declaration": false,
     "sourceMap": false,
     "paths": {
-      "@vault/mcp-proxy/detection/*": ["../proxy/src/detection/*"]
+      "@vaultmcp/mcp-proxy/detection/*": ["../proxy/src/detection/*"]
     }
   },
   "include": ["src", "test", "../proxy/src/detection"]

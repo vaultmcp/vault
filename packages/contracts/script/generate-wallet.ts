@@ -3,7 +3,7 @@
 /// transcripts safely but the secret does not).
 ///
 /// Usage:
-///   pnpm --filter @vault/contracts tsx script/generate-wallet.ts <sepolia|mainnet>
+///   pnpm --filter @vaultmcp/contracts tsx script/generate-wallet.ts <sepolia|mainnet>
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { writeFileSync, existsSync } from 'node:fs';

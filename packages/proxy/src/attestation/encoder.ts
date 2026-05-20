@@ -1,5 +1,5 @@
 /// ABI encoders for the two Vault EAS schemas. Schema strings (must match the registered
-/// schema strings in @vault/contracts/script/register-schemas.ts):
+/// schema strings in @vaultmcp/contracts/script/register-schemas.ts):
 ///   ScanReceipt:   "bytes32 contentHash,string mcpServerUrl,string toolName,uint8 verdict,
 ///                   uint8 confidence,uint8 layersRun,string[] detectedPatterns,uint64 scannedAt"
 ///   ThreatRecord:  "bytes32 contentHash,string mcpServerUrl,string toolName,string category,

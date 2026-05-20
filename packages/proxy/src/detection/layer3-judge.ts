@@ -8,7 +8,7 @@
 //
 // Default timeout = 5000ms ≈ ceil(p99_2KB × 1.5) plus headroom for the 7.3s outlier observed
 // at 2KB. Warn-at-80% fires at 4000ms — rare in normal traffic, expected when something is
-// off (network, provider degradation). Re-run `pnpm --filter @vault/mcp-proxy bench:l3` if
+// off (network, provider degradation). Re-run `pnpm --filter @vaultmcp/mcp-proxy bench:l3` if
 // the model id or input size distribution changes substantially.
 
 import { createClientFromEnv } from './clients/factory.js';

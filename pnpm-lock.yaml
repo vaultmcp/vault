@@ -89,7 +89,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.0
         version: 0.32.1
-      '@vault/mcp-proxy':
+      '@vaultmcp/mcp-proxy':
         specifier: workspace:*
         version: link:../proxy
     devDependencies:
@@ -114,7 +114,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.0
         version: 0.32.1
-      '@vault/corpus':
+      '@vaultmcp/corpus':
         specifier: workspace:*
         version: link:../corpus
       '@xenova/transformers':

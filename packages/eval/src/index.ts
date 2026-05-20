@@ -1,7 +1,7 @@
 /// Vault Red Team CLI — runs the scoreboard against every available competitor.
 ///
 /// Usage:
-///   pnpm --filter @vault/eval score                     # all available competitors
+///   pnpm --filter @vaultmcp/eval score                     # all available competitors
 ///   ANTHROPIC_API_KEY=... LAKERA_API_KEY=... pnpm eval score
 ///
 /// Writes the scoreboard to stdout and to packages/eval/scoreboard.md.

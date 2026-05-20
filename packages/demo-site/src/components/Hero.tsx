@@ -20,7 +20,7 @@ export function Hero() {
         <div className="mt-10 rounded-md border border-line bg-panel p-4 font-mono text-sm">
           <div className="text-dim">$ install</div>
           <div className="mt-1 break-all text-ink">
-            <span className="text-accent">npx</span> @vault/mcp-proxy{' '}
+            <span className="text-accent">npx</span> @vaultmcp/mcp-proxy{' '}
             <span className="text-dim">--</span> npx -y @modelcontextprotocol/server-filesystem /path
           </div>
         </div>

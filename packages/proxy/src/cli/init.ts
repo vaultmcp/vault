@@ -1,5 +1,5 @@
 /// vault init — detect MCP configs on this machine and wrap every server's command
-/// with `npx @vault/mcp-proxy --`, so the proxy intercepts tool responses before they
+/// with `npx @vaultmcp/mcp-proxy --`, so the proxy intercepts tool responses before they
 /// reach the agent. Idempotent. Backs up each config to <config>.vault-backup before
 /// writing.
 ///
@@ -129,9 +129,9 @@ export function defaultConfigPaths(): string[] {
 
 // ---- Wrap logic ----------------------------------------------------------
 
-const VAULT_PACKAGE = '@vault/mcp-proxy';
+const VAULT_PACKAGE = '@vaultmcp/mcp-proxy';
 
-/// True if the entry is already wrapped by vault (either npx @vault/mcp-proxy or a global mcp-proxy binary).
+/// True if the entry is already wrapped by vault (either npx @vaultmcp/mcp-proxy or a global mcp-proxy binary).
 export function isAlreadyWrapped(entry: McpServerEntry): boolean {
   const cmd = entry.command?.toLowerCase() ?? '';
   const args = entry.args ?? [];

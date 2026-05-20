@@ -1,5 +1,5 @@
 {
-  "name": "@vault/contracts",
+  "name": "@vaultmcp/contracts",
   "version": "0.0.1",
   "private": true,
   "type": "module",

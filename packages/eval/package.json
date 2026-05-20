@@ -1,5 +1,5 @@
 {
-  "name": "@vault/eval",
+  "name": "@vaultmcp/eval",
   "version": "0.0.1",
   "description": "Vault Red Team — eval harness comparing Vault against Lakera / OpenAI Moderation / raw Anthropic judge",
   "private": true,
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
-    "@vault/mcp-proxy": "workspace:*"
+    "@vaultmcp/mcp-proxy": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

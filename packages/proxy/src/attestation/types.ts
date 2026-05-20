@@ -1,4 +1,4 @@
-/// Attestation types — payload shapes for the EAS schemas defined in @vault/contracts.
+/// Attestation types — payload shapes for the EAS schemas defined in @vaultmcp/contracts.
 
 import type { Hex } from 'viem';
 

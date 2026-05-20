@@ -1,5 +1,5 @@
 // Measures Layer 3 latency floor. Run with:
-//   ANTHROPIC_API_KEY=sk-ant-... pnpm --filter @vault/mcp-proxy bench:l3
+//   ANTHROPIC_API_KEY=sk-ant-... pnpm --filter @vaultmcp/mcp-proxy bench:l3
 //
 // Copy the printed numbers into the header of src/detection/layer3-judge.ts
 // and set VAULT_LAYER3_TIMEOUT_MS = ceil(p99 of your typical input * 1.5).

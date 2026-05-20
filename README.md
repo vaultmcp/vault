@@ -2,11 +2,13 @@
 
 > **MCP is wide open. We close it.**
 
+**Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **Twitter/X:** [@vaultmcpbase](https://x.com/vaultmcpbase)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
+
 A drop-in proxy that scans every MCP tool response for prompt injection before your agent reasons on it. Three detection layers, a capability firewall, manifest verification, and on-chain reputation for every server you connect to.
 
 ```bash
 # Wrap any MCP server — zero config change to your agent
-npx @vault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
+npx @vaultmcp/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
 ```
 
 ---
@@ -66,10 +68,10 @@ Every scan verdict can be attested on-chain via [EAS](https://attest.sh) on Base
 
 ```bash
 # npm / npx (no install required)
-npx @vault/mcp-proxy -- <your MCP server command>
+npx @vaultmcp/mcp-proxy -- <your MCP server command>
 
 # or install globally
-npm install -g @vault/mcp-proxy
+npm install -g @vaultmcp/mcp-proxy
 mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
 ```
 
@@ -78,7 +80,7 @@ mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
 The fastest way is `vault init` — it auto-detects your existing MCP configs and wraps each server with the proxy:
 
 ```bash
-npx @vault/mcp-proxy && vault-init
+npx @vaultmcp/mcp-proxy && vault-init
 ```
 
 `vault init` shows a diff preview before writing, backs up the original config to `<config>.vault-backup`, and is idempotent (re-running skips already-wrapped servers). To revert: `vault-init unwrap`.
@@ -92,7 +94,7 @@ Or wrap by hand:
     "filesystem": {
       "command": "npx",
       "args": [
-        "@vault/mcp-proxy",
+        "@vaultmcp/mcp-proxy",
         "--",
         "npx", "-y", "@modelcontextprotocol/server-filesystem", "/path"
       ]
@@ -118,7 +120,7 @@ Reputation comes from EAS attestations on Base, aggregated across every Vault de
 
 ```bash
 # Proxy a remote MCP server over HTTP
-npx @vault/mcp-proxy --transport http \
+npx @vaultmcp/mcp-proxy --transport http \
   --upstream https://mcp.example.com/v1 \
   --port 8800
 ```
@@ -208,11 +210,11 @@ To disable telemetry entirely: `VAULT_TELEMETRY=0`.
 
 ```
 packages/
-  proxy/          # @vault/mcp-proxy — the core proxy (this is what you install)
-  corpus/         # @vault/corpus — curated attack/clean embedding corpus
-  contracts/      # @vault/contracts — VaultReputation.sol + EAS schema registration
-  collector/      # @vault/collector — telemetry ingest + aggregation server
-  eval/           # @vault/eval — detection benchmarks vs. competitors
+  proxy/          # @vaultmcp/mcp-proxy — the core proxy (this is what you install)
+  corpus/         # @vaultmcp/corpus — curated attack/clean embedding corpus
+  contracts/      # @vaultmcp/contracts — VaultReputation.sol + EAS schema registration
+  collector/      # @vaultmcp/collector — telemetry ingest + aggregation server
+  eval/           # @vaultmcp/eval — detection benchmarks vs. competitors
   demo-site/      # Next.js demo + live threat feed
 ```
 
@@ -227,7 +229,7 @@ packages/
 pnpm install
 
 # Run proxy in dev mode (wraps the MCP filesystem server)
-pnpm --filter @vault/mcp-proxy dev -- npx -y @modelcontextprotocol/server-filesystem /tmp
+pnpm --filter @vaultmcp/mcp-proxy dev -- npx -y @modelcontextprotocol/server-filesystem /tmp
 
 # Run all tests
 pnpm -r test
@@ -239,7 +241,7 @@ pnpm -r typecheck
 pnpm -r build
 
 # Run eval benchmarks
-pnpm --filter @vault/eval run eval
+pnpm --filter @vaultmcp/eval run eval
 
 # Contracts (requires Foundry)
 cd packages/contracts

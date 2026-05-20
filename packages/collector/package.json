@@ -1,5 +1,5 @@
 {
-  "name": "@vault/collector",
+  "name": "@vaultmcp/collector",
   "version": "0.0.1",
   "description": "Vault telemetry collector — ingests redacted scan events and exposes /feed and /stats",
   "private": true,

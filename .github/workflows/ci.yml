@@ -30,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: build the layer 2 corpus (proxy tests depend on it)
-        run: pnpm --filter @vault/corpus build
+        run: pnpm --filter @vaultmcp/corpus build
 
       - name: typecheck — proxy + collector + eval + demo-site + contracts
         run: pnpm -r typecheck
@@ -40,8 +40,8 @@ jobs:
 
       - name: build — proxy + collector
         run: |
-          pnpm --filter @vault/mcp-proxy build
-          pnpm --filter @vault/collector build
+          pnpm --filter @vaultmcp/mcp-proxy build
+          pnpm --filter @vaultmcp/collector build
 
       - name: bundle size check
         run: |
