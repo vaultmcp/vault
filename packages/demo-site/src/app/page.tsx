@@ -1,4 +1,5 @@
 import { Hero } from '@/components/Hero';
+import { CounterStrip } from '@/components/CounterStrip';
 import { ScanDemo } from '@/components/ScanDemo';
 import { ThreatFeed } from '@/components/ThreatFeed';
 import { Leaderboard } from '@/components/Leaderboard';
@@ -11,6 +12,7 @@ export default function Page() {
   return (
     <main>
       <Hero />
+      <CounterStrip />
       <ScanDemo />
       <ThreatFeed collectorUrl={collectorUrl} />
       <Leaderboard />
