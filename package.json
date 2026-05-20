@@ -4,7 +4,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "beta:status": "node scripts/beta-status.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["sharp", "esbuild", "protobufjs"]
