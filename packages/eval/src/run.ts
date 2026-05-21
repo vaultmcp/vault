@@ -64,6 +64,8 @@ interface RunResult {
 
 interface RunOptions {
   set: 'holdout-attacks' | 'benign' | 'both';
+  attacksDir: string;
+  benignDir: string;
   max?: number;
   noL3: boolean;
   dryRunL3: boolean;
@@ -74,13 +76,17 @@ interface RunOptions {
 // ---------- CLI parse ----------
 
 function parseArgs(argv: string[]): RunOptions {
-  const o: RunOptions = { set: 'both', noL3: false, dryRunL3: false, allowDegraded: false, includeOutOfScope: false };
+  const o: RunOptions = { set: 'both', attacksDir: 'holdout-attacks', benignDir: 'benign', noL3: false, dryRunL3: false, allowDegraded: false, includeOutOfScope: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--set') {
       const v = argv[++i];
       if (v === 'holdout-attacks' || v === 'benign' || v === 'both') o.set = v;
       else throw new Error(`bad --set: ${v}`);
+    } else if (a === '--attacks-dir') {
+      o.attacksDir = argv[++i] ?? '';
+    } else if (a === '--benign-dir') {
+      o.benignDir = argv[++i] ?? '';
     } else if (a === '--max') {
       o.max = parseInt(argv[++i] ?? '', 10);
       if (!Number.isFinite(o.max!)) throw new Error('bad --max');
@@ -95,12 +101,16 @@ function parseArgs(argv: string[]): RunOptions {
     } else if (a === '--help' || a === '-h') {
       process.stdout.write(`Usage: pnpm --filter @vaultmcp/eval run -- [flags]\n` +
         `  --set holdout-attacks|benign|both   default: both\n` +
+        `  --attacks-dir <dirname>              override attacks dataset dir (default: holdout-attacks)\n` +
+        `  --benign-dir <dirname>               override benign dataset dir (default: benign)\n` +
         `  --max N                              cap entries per set (debugging)\n` +
         `  --no-l3                              skip L3 entirely (free run)\n` +
         `  --dry-run-l3                         log L3 calls without making them\n` +
         `  --allow-degraded                     run without L3 (produces degraded results; label is prominent in output)\n` +
         `  --include-out-of-scope               include entries tagged scope=out_of_scope_* in the run (default: excluded)\n`);
       process.exit(0);
+    } else if (a === '--') {
+      // pnpm passes '--' as separator; ignore it
     } else {
       throw new Error(`unknown arg: ${a}`);
     }
@@ -110,7 +120,7 @@ function parseArgs(argv: string[]): RunOptions {
 
 // ---------- Dataset load ----------
 
-function loadDataset(name: 'holdout-attacks' | 'benign'): DatasetEntry[] {
+function loadDataset(name: string): DatasetEntry[] {
   const dir = path.join(ROOT, 'datasets', name);
   if (!existsSync(dir)) {
     throw new Error(`dataset directory missing: ${dir}`);
@@ -342,7 +352,7 @@ function aggregate(results: RunResult[], setName: string): Aggregate {
 function nowStamp(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
 function renderMarkdown(opts: RunOptions, attackAgg: Aggregate | null, benignAgg: Aggregate | null, degraded: boolean): string {
@@ -457,12 +467,17 @@ async function main(): Promise<void> {
   const sets: Array<'holdout-attacks' | 'benign'> =
     opts.set === 'both' ? ['holdout-attacks', 'benign'] : [opts.set];
 
+  // Map logical set names to actual directory names (overridable via --attacks-dir / --benign-dir)
+  const dirFor = (s: 'holdout-attacks' | 'benign') =>
+    s === 'holdout-attacks' ? opts.attacksDir : opts.benignDir;
+
   const aggs: Record<string, Aggregate | null> = { 'holdout-attacks': null, benign: null };
   const rawResults: Record<string, RunResult[]> = {};
 
   for (const setName of sets) {
-    process.stderr.write(`\nLoading ${setName}...\n`);
-    let entries = loadDataset(setName);
+    const dirName = dirFor(setName);
+    process.stderr.write(`\nLoading ${setName} (dir: ${dirName})...\n`);
+    let entries = loadDataset(dirName);
     const outOfScopeCount = entries.filter(e => e.scope && e.scope !== 'in_scope').length;
     if (!opts.includeOutOfScope) {
       entries = entries.filter(e => !e.scope || e.scope === 'in_scope');
