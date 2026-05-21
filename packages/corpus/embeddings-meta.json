@@ -1,6 +1,6 @@
 {
   "dim": 384,
-  "count": 61,
+  "count": 139,
   "model": "Xenova/bge-small-en-v1.5",
   "items": [
     {
@@ -54,6 +54,11 @@
       "severity": "high"
     },
     {
+      "id": "io-011",
+      "category": "instruction_override",
+      "severity": "medium"
+    },
+    {
       "id": "rh-001",
       "category": "role_hijack",
       "severity": "high"
@@ -102,6 +107,41 @@
       "id": "rh-010",
       "category": "role_hijack",
       "severity": "high"
+    },
+    {
+      "id": "rh-011",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-012",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-013",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-014",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-015",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-016",
+      "category": "role_hijack",
+      "severity": "high"
+    },
+    {
+      "id": "rh-017",
+      "category": "role_hijack",
+      "severity": "critical"
     },
     {
       "id": "ex-001",
@@ -200,6 +240,36 @@
     },
     {
       "id": "jb-010",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-011",
+      "category": "jailbreak",
+      "severity": "critical"
+    },
+    {
+      "id": "jb-012",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-013",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-014",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-015",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-016",
       "category": "jailbreak",
       "severity": "medium"
     },
@@ -304,8 +374,328 @@
       "severity": "medium"
     },
     {
-      "id": "io-011",
+      "id": "ep-011",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-012",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-013",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-014",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-015",
+      "category": "encoded_payload",
+      "severity": "medium"
+    },
+    {
+      "id": "ep-016",
+      "category": "encoded_payload",
+      "severity": "critical"
+    },
+    {
+      "id": "ep-017",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-018",
+      "category": "encoded_payload",
+      "severity": "medium"
+    },
+    {
+      "id": "ep-019",
+      "category": "encoded_payload",
+      "severity": "high"
+    },
+    {
+      "id": "ep-020",
+      "category": "encoded_payload",
+      "severity": "medium"
+    },
+    {
+      "id": "io-012",
       "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-013",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-014",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-011",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-012",
+      "category": "exfiltration",
+      "severity": "high"
+    },
+    {
+      "id": "ex-013",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "io-015",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "mt-011",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "ep-021",
+      "category": "encoded_payload",
+      "severity": "critical"
+    },
+    {
+      "id": "io-016",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "mt-012",
+      "category": "multi_turn_setup",
+      "severity": "critical"
+    },
+    {
+      "id": "mt-013",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "ex-014",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-015",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "io-017",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-018",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "io-019",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-020",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-016",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-017",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-018",
+      "category": "exfiltration",
+      "severity": "high"
+    },
+    {
+      "id": "ex-019",
+      "category": "exfiltration",
+      "severity": "high"
+    },
+    {
+      "id": "jb-017",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-018",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-019",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "io-021",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-022",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-018",
+      "category": "role_hijack",
+      "severity": "critical"
+    },
+    {
+      "id": "rh-019",
+      "category": "role_hijack",
+      "severity": "high"
+    },
+    {
+      "id": "io-023",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "io-024",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-020",
+      "category": "exfiltration",
+      "severity": "high"
+    },
+    {
+      "id": "ex-021",
+      "category": "exfiltration",
+      "severity": "medium"
+    },
+    {
+      "id": "io-025",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "jb-020",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "io-026",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "jb-021",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-022",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-023",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-024",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "mt-014",
+      "category": "multi_turn_setup",
+      "severity": "critical"
+    },
+    {
+      "id": "mt-015",
+      "category": "multi_turn_setup",
+      "severity": "critical"
+    },
+    {
+      "id": "io-027",
+      "category": "instruction_override",
+      "severity": "medium"
+    },
+    {
+      "id": "mt-016",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "io-028",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "mt-017",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "io-029",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "ex-022",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "ex-023",
+      "category": "exfiltration",
+      "severity": "critical"
+    },
+    {
+      "id": "mt-018",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "mt-019",
+      "category": "multi_turn_setup",
+      "severity": "medium"
+    },
+    {
+      "id": "io-030",
+      "category": "instruction_override",
+      "severity": "critical"
+    },
+    {
+      "id": "jb-025",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-026",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-027",
+      "category": "jailbreak",
       "severity": "medium"
     }
   ]
