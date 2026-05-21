@@ -25,3 +25,8 @@ audit-*.jsonl
 .vscode/
 *.swp
 .tmp/
+
+# Internal sprint / dev files — never commit these
+CLAUDE.md
+NOTES_FOR_YV.md
+overnight-sprint.txt
