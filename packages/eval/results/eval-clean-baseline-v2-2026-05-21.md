@@ -199,7 +199,7 @@ This is the single most operationally important finding: all 25 devops_monitorin
 - If threshold raised to 0.305: would catch the 15 entries in the 0.30–0.35 band = 50% of paraphrase set
 - If threshold raised to 0.40: would catch all 30 paraphrase attacks, but FPR impact unknown
 
-**Recommended investigation for yv:** Run `packages/proxy/scripts/check-corpus-distance.mjs` on benign-v2 entries to find the distribution of benign distances. If no benign entries sit in 0.30–0.40, raising threshold to 0.30 is safe and nearly free on FPR.
+**Recommended investigation:** Run `packages/proxy/scripts/check-corpus-distance.mjs` on benign-v2 entries to find the distribution of benign distances. If no benign entries sit in 0.30–0.40, raising threshold to 0.30 is safe and nearly free on FPR.
 
 ### 5.2 L3 is load-bearing, not supplementary
 
@@ -457,7 +457,7 @@ These are rough estimates. The honest answer is: run with an API key.
 
 ---
 
-## 12. Recommended actions for yv (morning briefing)
+## 12. Recommended next actions
 
 In priority order:
 

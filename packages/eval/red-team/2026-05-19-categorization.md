@@ -91,6 +91,6 @@ L3 was NOT invoked during the red-team (same as the holdout eval — no API key)
 ## Outcome
 
 - 2 trivial fixes shipped with regression tests.
-- 0 architectural fixes shipped (would require design work overnight that yv should weigh in on).
+- 0 architectural fixes shipped (would require design work — deferred to maintainer review).
 - LIMITATIONS.md created at `packages/LIMITATIONS.md`.
 - Holdout eval re-run, no regression: TPR 44.1% → 45.2%, FPR 0.9% → 0.9%.
