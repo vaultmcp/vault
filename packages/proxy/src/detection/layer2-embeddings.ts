@@ -2,7 +2,13 @@ import { loadCorpus, type LoadedCorpus } from '@vaultmcp/corpus';
 import type { DetectionResult } from './types.js';
 
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
-const DEFAULT_THRESHOLD = 0.35;
+// Threshold tuned for 200-entry corpus (Day 2 sprint).
+// With 61 entries: empirical gap was attacks ≈0.21 vs benign ≈0.34+, so 0.35 worked.
+// With 200 entries the corpus is 3× denser; attacks now land ≈0.15–0.20 while
+// benign security-research text lands at 0.297–0.347 (measured on fp-probe fixtures).
+// Lowering to 0.27 preserves attack detection while restoring clean verdicts for
+// research abstracts, CVE advisories, and security-training content.
+const DEFAULT_THRESHOLD = 0.27;
 
 let extractorPromise: Promise<(text: string, opts: { pooling: 'mean'; normalize: boolean }) => Promise<{ data: Float32Array }>> | null = null;
 let corpus: LoadedCorpus | null = null;
