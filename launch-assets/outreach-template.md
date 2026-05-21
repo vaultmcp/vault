@@ -10,7 +10,7 @@ Subject: Vault private beta — MCP prompt injection proxy
 
 [Name],
 
-I've been building a proxy that detects prompt injection in MCP tool responses before they reach the agent's context window. Three-layer detection: regex → embeddings → LLM judge. 99.5% TPR on a 185-entry holdout of published attack literature, 0.0% FPR on 110 benign documents. Numbers are reproducible from the public eval harness.
+I've been building a proxy that detects prompt injection in MCP tool responses before they reach the agent's context window. Three-layer detection: regex → embeddings → LLM judge. 100% TPR on an 80-attack public holdout (95.5%+ lower bound at 95% confidence), 0.0% FPR on 100 benign documents. Numbers are reproducible from the public eval harness.
 
 I'd value 20-30 minutes of your time running it against a real workflow and telling me what it misses. The known gaps are documented (multilingual, long-context dilution, cross-session multi-turn, image/audio) — I'm more interested in the ones I haven't found yet.
 
@@ -21,7 +21,7 @@ npx @aimcpvault/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem
 ```
 
 Beta guide: [link to BETA.md on repo]
-Demo: http://vaultmcp.io
+Demo: https://vaultmcp.io
 
 Please keep this private for now — not ready for public announcement yet.
 
@@ -46,7 +46,7 @@ Install:
 npx @aimcpvault/mcp-proxy@beta -- <your server command>
 ```
 
-Demo: http://vaultmcp.io
+Demo: https://vaultmcp.io
 Beta guide: [link to BETA.md]
 
 [yv]
@@ -65,7 +65,7 @@ The on-chain piece: every scan verdict is attested via EAS on Base. The proxy bu
 
 You'd be one of the first to have attestations on-chain. If you run any MCP servers or AI tooling, 10-20 minutes of install time would help a lot.
 
-Demo: http://vaultmcp.io (live Sepolia leaderboard)
+Demo: https://vaultmcp.io (live Sepolia leaderboard)
 Install: `npx @aimcpvault/mcp-proxy@beta -- <your MCP server command>`
 Beta guide: [link to BETA.md]
 

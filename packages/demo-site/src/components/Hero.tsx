@@ -21,8 +21,9 @@ export function Hero() {
 
         {/* Stat line */}
         <p className="mt-8 text-base text-dim md:text-lg">
-          <span className="text-ink font-bold">99.5% detection rate</span> on 185 published attacks.{' '}
-          <span className="text-ink font-bold">0.0% false positive rate</span> on 110 benign documents.
+          <span className="text-ink font-bold">100% detection rate</span> on our 80-attack public eval
+          (95.5%+ lower bound at 95% confidence).{' '}
+          <span className="text-ink font-bold">0.0% false positive rate</span> on 100 benign documents.
           <br className="hidden md:block" />
           {' '}Drop-in proxy — zero config change to your agent or MCP server.
         </p>
@@ -50,9 +51,9 @@ export function Hero() {
         {/* Stat pills */}
         <div className="mt-8 flex flex-wrap gap-3">
           {[
-            { label: '99.5% TPR', accent: true },
+            { label: '100% TPR · 95.5%+ CI', accent: true },
             { label: '0.0% FPR', accent: false },
-            { label: '184 / 185 caught', accent: false },
+            { label: '80 / 80 caught', accent: false },
             { label: 'L1 · L2 · L3', accent: false },
             { label: 'Base / EAS', accent: false },
           ].map(({ label, accent }) => (

@@ -6,7 +6,7 @@ Thanks for agreeing to look at this early. This is a working proxy, not a demo �
 
 A drop-in proxy that sits between your AI agent and any MCP server. It scans every `tools/call` response for prompt injection before your agent sees it.
 
-Detection is three-layer: regex heuristics (sub-millisecond), embedding similarity against a curated attack corpus (~11 ms), and an LLM judge for ambiguous cases (~1.5 s). The LLM layer requires an API key — without it, TPR drops from 99.5% to 45.2%.
+Detection is three-layer: regex heuristics (sub-millisecond), embedding similarity against a curated attack corpus (~11 ms), and an LLM judge for ambiguous cases (~1.5 s). The LLM layer requires an API key — without it, TPR drops to near 0% on novel out-of-distribution attacks. L3 is the detection backbone.
 
 ## Install
 
@@ -98,14 +98,14 @@ Full list: `packages/LIMITATIONS.md` in the repo.
 
 | metric | value |
 |---|---|
-| TPR — in-scope injections (L3 on) | 99.5% (184/185) |
-| TPR — L1+L2 only, no API key | 45.2% (85/188) |
-| FPR — benign documents | 0.0% (0/110) |
+| TPR — v2 holdout, 80 attacks (L3 on) | 100% (80/80) · 95.5%+ lower bound at 95% CI |
+| TPR — L1+L2 only, no API key | near 0% on novel attacks (L3 required for production) |
+| FPR — benign documents | 0.0% (0/100) |
 | L1 latency p50/p99 | 0.03 ms / 0.53 ms |
 | L2 latency p50/p99 | 11 ms / 70 ms |
 | L3 latency p50/p99 | 1541 ms / 3499 ms |
 
-These are measured from a public holdout eval, not cherry-picked. See `packages/eval/results/eval-2026-05-20-1017.md` for the full report.
+These are measured from a public one-shot holdout eval, not cherry-picked. See `packages/eval/results/eval-clean-baseline-v2-L3-enabled-2026-05-21.md` for the full report.
 
 ## Demo site
 

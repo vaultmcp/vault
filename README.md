@@ -30,10 +30,9 @@ All numbers below are reproducible from the harness committed in this repo. Each
 
 | metric | value | source |
 |---|---|---|
-| TPR — in-scope third-party injections (L3 enabled) | **99.5%** (184 / 185) | [^holdout-l3] |
-| TPR — all holdout entries including out-of-scope (L3 enabled) | **97.9%** (184 / 188) | [^holdout-l3] |
-| TPR — L1+L2 only, no API key | **45.2%** (85 / 188) | [^holdout-degraded] |
-| False positive rate (benign flagged) | **0.0%** (0 / 110) | [^holdout-l3] |
+| TPR — v2 holdout (L3 enabled, 80 attacks) | **100%** (80 / 80) · 95.5%+ lower bound at 95% CI | [^holdout-l3] |
+| TPR — L1+L2 only, no API key | materially lower (L3 is required for production) | [^holdout-degraded] |
+| False positive rate (benign flagged) | **0.0%** (0 / 100) | [^holdout-l3] |
 | L1 latency (p50 / p99) | 0.03 ms / 0.53 ms | [^holdout-l3] |
 | L2 latency (p50 / p99) | 11.05 ms / 69.75 ms | [^holdout-l3] |
 | L3 latency (p50 / p99) | 1541 ms / 3499 ms | [^holdout-l3] |
@@ -41,10 +40,8 @@ All numbers below are reproducible from the harness committed in this repo. Each
 | Steady-state memory (RSS) | 135–180 MB after warmup, no leak observed | [^load] |
 | 500 KB response scan time | ~25 s (embedder-bound, see LIMITATIONS §14) | [^edge] |
 
-**In-scope vs overall:** the 3-entry difference between 185 in-scope and 188 total reflects three NVIDIA garak probes that test model harmful-completion behavior (a different threat model than third-party injection in tool output). They are tagged `out_of_scope_user_jailbreak` in the dataset and excluded from the in-scope metric by default. See `packages/eval/datasets/holdout-attacks/MANIFEST.md` for full explanation.
-
-[^holdout-l3]: `packages/eval/results/eval-2026-05-20-1017.md` — 2026-05-20 sprint, corpus patched with io-011. Dataset: `packages/eval/datasets/holdout-attacks/` (185 in-scope + 3 out-of-scope attacks) and `packages/eval/datasets/benign/` (110 entries). L3 enabled (Anthropic Haiku 4.5). 91.3% of detection attributable to L3; L3 called on ~91% of attack entries in this eval (expected 20–40% in production on real MCP traffic).
-[^holdout-degraded]: `packages/eval/results/eval-2026-05-19-2301.md` — post-P2 sprint. Same dataset. L3 disabled (no API key in env). This is the degraded-mode number; running without `ANTHROPIC_API_KEY` produces this result.
+[^holdout-l3]: `packages/eval/results/eval-clean-baseline-v2-L3-enabled-2026-05-21.md` — one-shot eval against v2 holdout constructed after detection code was frozen at commit `8d230e4`. Dataset: `packages/eval/datasets/holdout-v2-novel/` (50 attacks) + `packages/eval/datasets/holdout-v2-paraphrase/` (30 attacks) + `packages/eval/datasets/benign-v2/` (100 entries). L3 enabled (Anthropic Haiku 4.5). No tuning occurred between holdout construction and eval run.
+[^holdout-degraded]: Without `ANTHROPIC_API_KEY`, Vault runs L1+L2 only. On the v2 novel holdout (attacks designed to sit outside L2's detection range) TPR is near 0%; on paraphrase attacks it is ~7%. L3 is the detection backbone for out-of-distribution attacks. See `packages/LIMITATIONS.md` §11 for offline-mode limitations.
 [^load]: `packages/eval/load/report.md` — 100 req/s × 300 s × single stdio proxy instance × ~200-byte stub-MCP responses, L1+L2 only. Past 100 req/s the cliff is not yet measured.
 [^edge]: `packages/proxy/test/edge-cases.test.ts` scenario 4. The latency is bounded by the L2 embedder iterating ~140 streaming chunks; L1 stays sub-millisecond at any size. See LIMITATIONS §14.
 
@@ -113,7 +110,7 @@ Layer 3 (LLM judge) calls Anthropic Haiku 4.5 on responses that fall in L2's unc
 
 - **~$0.0005 per uncertain-zone request** (Haiku 4.5 input + small output at current pricing)
 - **~$0.04/hr at 100 req/hr in production** (20–40% L3 call rate on real traffic)
-- **$0 without API key** — L1+L2 only, TPR drops to 45.2% and FP rate on protocol-encoded traffic rises to ~40%. See [Offline mode](#offline-mode-no-api-key) above. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
+- **$0 without API key** — L1+L2 only, TPR drops to near 0% on novel out-of-distribution attacks and FP rate on protocol-encoded traffic rises to ~40%. See [Offline mode](#offline-mode-no-api-key) above. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
 
 The high L3 rate in our eval (91%) reflects an adversarial dataset — nearly every entry is an attack that lands in L2's uncertain zone by design. Real MCP traffic (mostly clean tool output) has a much lower L3 call rate.
 
@@ -423,7 +420,7 @@ forge build
 
 ## Security
 
-Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. Measured detection on our public holdout is **99.5% TPR / 0.0% FPR** (in-scope, L3 enabled) and **45.2% TPR / 0.9% FPR** with L3 disabled (L1+L2 only). The layered approach raises the bar; operators should treat Vault as one layer in a broader security posture.
+Vault is a defense-in-depth layer, not a complete solution. No regex or embedding model catches every attack — adversaries can craft payloads that evade any single detection strategy. Measured detection on our public v2 holdout is **100% TPR / 0.0% FPR** (80 attacks, L3 enabled, 95.5%+ lower bound at 95% CI). Without L3, TPR is near 0% on novel out-of-distribution attacks — L3 is the detection backbone. The layered approach raises the bar; operators should treat Vault as one layer in a broader security posture.
 
 For details:
 - [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — measured gaps, red-team evidence, and which mitigations are planned vs. accepted.

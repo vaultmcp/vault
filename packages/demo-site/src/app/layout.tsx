@@ -12,18 +12,18 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://vaultmcp.io'),
   title: 'Vault — MCP prompt-injection proxy',
   description:
-    '99.5% TPR · 0.0% FPR. Drop-in proxy that catches prompt injections in MCP tool responses before your agent sees them. Regex + embeddings + LLM judge + Base/EAS attestations.',
+    '100% TPR · 0.0% FPR on 80-attack public eval (95.5%+ at 95% confidence). Drop-in proxy that catches prompt injections in MCP tool responses before your agent sees them. Regex + embeddings + LLM judge + Base/EAS attestations.',
   openGraph: {
-    title: 'Vault — MCP prompt-injection proxy',
-    description: '99.5% TPR · 0.0% FPR · Drop-in prompt-injection proxy for MCP.',
+    title: 'VaultMCP — Stop prompt injection in MCP',
+    description: '100% detection rate on 80-attack public eval (95.5%+ at 95% confidence). 0.0% FPR on 100 benign documents. Drop-in MCP proxy.',
     url: 'https://vaultmcp.io',
     siteName: 'Vault',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vault — MCP prompt-injection proxy',
-    description: '99.5% TPR · 0.0% FPR on 185 published attacks. One command to deploy.',
+    title: 'VaultMCP — Stop prompt injection in MCP',
+    description: '100% detection rate on 80-attack public eval (95.5%+ at 95% confidence). 0.0% FPR. One command to deploy.',
     site: '@vaultmcpbase',
   },
 };
