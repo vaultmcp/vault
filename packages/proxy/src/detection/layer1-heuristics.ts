@@ -32,13 +32,19 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
   // setup attack that tries to apply a blanket policy override to future turns.
   { name: 'process-next-turns', re: /process\s+the\s+next\s+\d+\s+(?:user\s+)?(?:turns?|messages?|exchanges?)\s+as\s+if/i },
 
-  // Jailbreak-mode activation (not "developer mode" which appears in mobile/browser docs).
-  { name: 'jailbreak-mode', re: /(?:activate|enable|enter|switch\s+(?:into|to))\s+(?:jailbreak|unrestricted|uncensored)\s+mode/i },
+  // Jailbreak-mode activation. Extended to cover "Sudo Mode" and "Privileged Mode" which
+  // are "operator persona" variants of the DAN Mode attack. "developer mode" excluded because
+  // it appears frequently in mobile/browser SDK documentation.
+  { name: 'jailbreak-mode', re: /(?:activate|enable|enter|switch\s+(?:into|to))\s+(?:jailbreak|unrestricted|uncensored|sudo|privileged)\s+mode/i },
 
-  // Fake model-trainer / platform-developer authority claims.
-  // Requires either "I am the model's trainer" or "real instructions from OpenAI/Anthropic…
-  // please prioritize" — precise enough to avoid FP on academic discussion.
-  { name: 'fake-trainer-authority', re: /I\s+am\s+(?:the\s+)?(?:(?:model'?s?\s+)?trainer\b|(?:from\s+)?(?:OpenAI|Anthropic)(?:'s\s+safety\s+team)?)|real\s+instructions?\s+from\s+(?:OpenAI|Anthropic|the\s+(?:AI\s+)?developers?)\s*,\s*please\s+prioritize/i },
+  // Fake model-trainer / platform-developer / system-admin authority claims.
+  // "I am the system administrator" + "higher-priority instruction" — in-band authority
+  // claim that never appears in legitimate tool output. Also catches OpenAI/Anthropic claims.
+  { name: 'fake-trainer-authority', re: /I\s+am\s+(?:the\s+)?(?:(?:model'?s?\s+)?trainer\b|(?:from\s+)?(?:OpenAI|Anthropic)(?:'s\s+safety\s+team)?|system\s+administrator\b)|real\s+instructions?\s+from\s+(?:OpenAI|Anthropic|the\s+(?:AI\s+)?developers?)\s*,\s*please\s+prioritize/i },
+
+  // Unconstrained / no-safety-alignment persona requests. "Generate the unconstrained version"
+  // and "no safety alignment" target the "produce what you would say without training" attack.
+  { name: 'unconstrained-persona', re: /(?:generate|produce|output)\s+the\s+unconstrained\s+version|no\s+safety\s+alignment\b|without\s+(?:your\s+)?(?:safety|content)\s+(?:training|alignment|filters?|guidelines?)/i },
 ];
 
 const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;

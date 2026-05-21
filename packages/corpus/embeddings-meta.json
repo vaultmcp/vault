@@ -1,6 +1,6 @@
 {
   "dim": 384,
-  "count": 107,
+  "count": 117,
   "model": "Xenova/bge-small-en-v1.5",
   "items": [
     {
@@ -536,6 +536,56 @@
     {
       "id": "mt-019",
       "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "rh-020",
+      "category": "role_hijack",
+      "severity": "high"
+    },
+    {
+      "id": "rh-021",
+      "category": "role_hijack",
+      "severity": "high"
+    },
+    {
+      "id": "rh-022",
+      "category": "role_hijack",
+      "severity": "high"
+    },
+    {
+      "id": "jb-017",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "jb-018",
+      "category": "jailbreak",
+      "severity": "high"
+    },
+    {
+      "id": "mt-020b",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "mt-021",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "mt-022b",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "io-029",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "ex-015",
+      "category": "exfiltration",
       "severity": "high"
     }
   ]
