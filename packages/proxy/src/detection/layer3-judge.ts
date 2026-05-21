@@ -20,6 +20,7 @@ import {
   type JudgeOutput,
 } from './clients/types.js';
 import type { DetectionResult, Verdict } from './types.js';
+import { emitDegradedWarningAtStartup } from './degraded-state.js';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -31,7 +32,9 @@ let cache: ClientCache = { client: null, resolved: false };
 
 function getClient(): JudgeClient | null {
   if (!cache.resolved) {
-    cache = { client: createClientFromEnv(), resolved: true };
+    const client = createClientFromEnv();
+    cache = { client, resolved: true };
+    if (!client) emitDegradedWarningAtStartup();
   }
   return cache.client;
 }

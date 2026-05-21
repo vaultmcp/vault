@@ -1,16 +1,10 @@
-/// Regression test for the silent-L3-fallback bug.
+/// Tests for L3 degraded-mode behaviour.
 ///
-/// What this catches: when no API key is configured, the pipeline enters the uncertain
-/// zone (L2 dist < 0.50), attempts L3, receives Layer3Unavailable, and silently returns
-/// L2's clean verdict. Prior to the fix, l3Status was absent from the result, the
-/// caller had no way to know L3 had been skipped, and the eval harness recorded
-/// l3_unavailable=false — a misleading null.
-///
-/// These tests verify:
-///   1. Result carries l3Status === 'unavailable' when the uncertain zone is entered
-///      but no API key is configured.
-///   2. A stderr warning is emitted exactly once on the first uncertain-zone request.
-///   3. Subsequent uncertain-zone requests do NOT re-emit the warning.
+/// When no API key is configured:
+///   1. Result carries l3Status === 'unavailable' when the uncertain zone is entered.
+///   2. A stderr warning is emitted on the first miss and then every 100th miss.
+///   3. Suspicious L2 verdicts are RETAINED (not demoted to clean) by default.
+///   4. Setting VAULT_L3_FP_SAFE=1 reverts to the old demote-to-clean behaviour.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { _resetClientForTesting, _setClientForTesting } from '../src/detection/layer3-judge.js';
@@ -57,8 +51,46 @@ describe('L3 degraded-mode detection', () => {
   it('sets l3Status=unavailable when uncertain zone entered with no API key', async () => {
     const result = await runPipeline(BORDERLINE_PAYLOAD);
     expect(result.l3Status).toBe('unavailable');
-    // Verdict falls back to L2's clean
+    // Borderline-clean path: L2 returned 'clean', uncertain zone entered, L3 unavailable →
+    // falls through to L2's clean verdict (no suspicious demotion needed here)
     expect(result.verdict).toBe('clean');
+  });
+
+  it('retains suspicious verdict when L3 unavailable (conservative default)', async () => {
+    const { runLayer2 } = await import('../src/detection/layer2-embeddings.js');
+    vi.mocked(runLayer2).mockResolvedValueOnce({
+      verdict: 'suspicious',
+      confidence: 0.6,
+      reasoning: 'layer-2 nearest corpus-io-006 dist=0.28 < threshold 0.35',
+      detectedPatterns: ['instruction-override'],
+      layer: 2,
+      distance: 0.28,
+    });
+    const result = await runPipeline(BORDERLINE_PAYLOAD);
+    expect(result.l3Status).toBe('unavailable');
+    expect(result.verdict).toBe('suspicious'); // kept, not demoted to clean
+    expect(result.reasoning).toContain('layer-3 unavailable');
+  });
+
+  it('demotes suspicious to clean when VAULT_L3_FP_SAFE=1', async () => {
+    const { runLayer2 } = await import('../src/detection/layer2-embeddings.js');
+    vi.mocked(runLayer2).mockResolvedValueOnce({
+      verdict: 'suspicious',
+      confidence: 0.6,
+      reasoning: 'layer-2 nearest corpus-io-006 dist=0.28 < threshold 0.35',
+      detectedPatterns: ['instruction-override'],
+      layer: 2,
+      distance: 0.28,
+    });
+    process.env.VAULT_L3_FP_SAFE = '1';
+    try {
+      const result = await runPipeline(BORDERLINE_PAYLOAD);
+      expect(result.l3Status).toBe('unavailable');
+      expect(result.verdict).toBe('clean');
+      expect(result.reasoning).toContain('VAULT_L3_FP_SAFE=1');
+    } finally {
+      delete process.env.VAULT_L3_FP_SAFE;
+    }
   });
 
   it('emits a stderr warning on the first uncertain-zone request with no API key', async () => {
@@ -68,24 +100,22 @@ describe('L3 degraded-mode detection', () => {
       const warnings = stderrSpy.mock.calls
         .map((c) => String(c[0]))
         .filter((s) => s.includes('Layer 3 (LLM judge) is unavailable'));
-      expect(warnings).toHaveLength(1);
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
       expect(warnings[0]).toContain('ANTHROPIC_API_KEY');
-      expect(warnings[0]).toContain('degraded mode');
+      expect(warnings[0]).toContain('DEGRADED MODE');
     } finally {
       stderrSpy.mockRestore();
     }
   });
 
-  it('does NOT re-emit the warning on subsequent uncertain-zone requests', async () => {
+  it('re-emits warning every 100 misses, not on every single miss', async () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     try {
-      await runPipeline(BORDERLINE_PAYLOAD);
-      await runPipeline(BORDERLINE_PAYLOAD);
-      await runPipeline(BORDERLINE_PAYLOAD);
+      for (let i = 0; i < 5; i++) await runPipeline(BORDERLINE_PAYLOAD);
       const warnings = stderrSpy.mock.calls
         .map((c) => String(c[0]))
         .filter((s) => s.includes('Layer 3 (LLM judge) is unavailable'));
-      expect(warnings).toHaveLength(1); // exactly once, not three times
+      expect(warnings).toHaveLength(1); // only on miss #1; miss #2–5 suppressed (next at #100)
     } finally {
       stderrSpy.mockRestore();
     }

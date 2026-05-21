@@ -77,16 +77,16 @@ export async function runPipeline(text: string, context?: JudgeContext): Promise
       emitDegradedWarningOnce();
     }
 
-    // L3 unavailable — fall back conservatively. We treat a Layer-2 "suspicious" verdict
-    // WITHOUT an L3 second opinion as not-blockable, because the whole point of marking it
-    // suspicious (rather than malicious) is that we weren't confident enough alone. This
-    // is the FP-protection knob: operators who want stricter behavior set ANTHROPIC_API_KEY
-    // (or equivalent) and L3 disambiguates.
+    // L3 unavailable fallback. Default: keep 'suspicious' so block mode still catches it.
+    // Operators who prefer the old FP-safe behaviour (suspicious→clean) set VAULT_L3_FP_SAFE=1.
     if (isSuspicious) {
+      const fpSafe = process.env.VAULT_L3_FP_SAFE === '1';
       return {
         ...l2,
-        verdict: 'clean',
-        reasoning: `${l2.reasoning} — demoted to clean: layer-3 unavailable to disambiguate`,
+        verdict: fpSafe ? 'clean' : ('suspicious' as const),
+        reasoning: fpSafe
+          ? `${l2.reasoning} — demoted to clean: layer-3 unavailable (VAULT_L3_FP_SAFE=1)`
+          : `${l2.reasoning} — layer-3 unavailable; suspicious verdict retained (set VAULT_L3_FP_SAFE=1 to demote)`,
         l3Status: 'unavailable',
       };
     }

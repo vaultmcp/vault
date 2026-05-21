@@ -48,7 +48,8 @@ Detection (env)
   VAULT_LAYER3_MODEL         model id override
   VAULT_LAYER3_BASE_URL      OpenAI-compatible endpoint (custom)
   VAULT_LAYER3_TIMEOUT_MS    judge call hard timeout (default 5000)
-  ANTHROPIC_API_KEY          BYO key for Layer 3 (Anthropic)
+  VAULT_L3_FP_SAFE           1 = demote suspicious→clean when L3 unavailable (old behaviour)
+  ANTHROPIC_API_KEY          BYO key for Layer 3 (Anthropic)  ← strongly recommended
   OPENAI_API_KEY             BYO key for Layer 3 (OpenAI / compat)
 
 Capability firewall (env, default off)

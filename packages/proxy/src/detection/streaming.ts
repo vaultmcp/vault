@@ -137,17 +137,19 @@ export async function runStreamingPipeline(
     } catch (err) {
       if (!(err instanceof Layer3Unavailable)) {
         process.stderr.write(
-          `vault: layer-3 failed during streaming (${err instanceof Error ? err.message : String(err)}) — falling back to clean\n`,
+          `vault: layer-3 failed during streaming (${err instanceof Error ? err.message : String(err)}) — falling back\n`,
         );
       } else {
         emitDegradedWarningOnce();
       }
-      // FP-safe: suspicious-without-L3 → clean (same policy as the non-streaming pipeline)
+      const fpSafe = process.env.VAULT_L3_FP_SAFE === '1';
       const { chunkIndex: _ix, ...rest } = worstSuspicious;
       return {
         ...rest,
-        verdict: 'clean',
-        reasoning: `${rest.reasoning} — demoted to clean: layer-3 unavailable (streaming)`,
+        verdict: fpSafe ? 'clean' : ('suspicious' as const),
+        reasoning: fpSafe
+          ? `${rest.reasoning} — demoted to clean: layer-3 unavailable (VAULT_L3_FP_SAFE=1) (streaming)`
+          : `${rest.reasoning} — layer-3 unavailable; suspicious retained (streaming)`,
         l3Status: 'unavailable',
         streamingChunks: chunksProcessed,
       };
