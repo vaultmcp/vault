@@ -11,6 +11,11 @@ import { emitDegradedWarningOnce } from './degraded-state.js';
 const L1_MALICIOUS_SHORT_CIRCUIT = 0.85;
 const L2_DEFAULT_THRESHOLD = 0.35;
 const L2_UNCERTAIN_MARGIN = 0.15;
+// When L1 fired ONLY large-base64-blob and L2 confirms semantic distance > this value,
+// the payload is almost certainly benign protocol-encoded data (Pub/Sub, SQS, encrypted
+// blobs). Actual encoded attacks land at ~0.36 in L2 space (measured: h2-a12 = 0.3619)
+// and are caught by L0 decode-then-L1 first. The 0.40 margin provides a safety buffer.
+const BASE64_ONLY_BYPASS_DIST = 0.40;
 
 function readL2Threshold(): number {
   const raw = process.env.VAULT_LAYER2_THRESHOLD;
@@ -58,6 +63,29 @@ export async function runPipeline(text: string, context?: JudgeContext): Promise
   // that is semantically close to attack categories but actually benign (e.g. tool docs
   // that describe filesystem operations getting near-matched to exfiltration entries).
   if (l2.verdict === 'malicious') return { ...l2, l3Status: 'skipped_gate' };
+
+  // Base64-only bypass: when L1 fired solely on large-base64-blob (no other pattern) and
+  // L2 places the text far from the attack corpus (> 0.40), classify as clean without
+  // calling L3. This handles benign protocol-encoded content (Pub/Sub data fields, SQS
+  // bodies, encrypted payloads) that trips the base64 heuristic but has nothing in common
+  // with known injection vocabulary. Actual encoded attacks are caught upstream by L0
+  // (decoded text trips L1) or land at ≤ 0.40 in L2 space (measured: 0.3619 for h2-a12).
+  const isBase64OnlyL1 =
+    l1.verdict !== 'clean' &&
+    l1.detectedPatterns.length === 1 &&
+    l1.detectedPatterns[0] === 'large-base64-blob';
+  if (isBase64OnlyL1 && (l2.distance ?? 0) > BASE64_ONLY_BYPASS_DIST) {
+    return {
+      verdict: 'clean',
+      confidence: 0.7,
+      reasoning: `layer-1 large-base64-blob only; layer-2 dist=${(l2.distance ?? 0).toFixed(3)} > ${BASE64_ONLY_BYPASS_DIST} — benign protocol encoding`,
+      detectedPatterns: [],
+      layer: 2,
+      distance: l2.distance,
+      l3Status: 'skipped_gate',
+      bypassReason: 'base64_blob_only_high_l2_distance',
+    };
+  }
 
   // Decide whether to run L3. Trigger when L2 is suspicious OR L2 is clean-but-borderline.
   const threshold = readL2Threshold();

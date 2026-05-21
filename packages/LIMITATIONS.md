@@ -89,7 +89,7 @@ than a blanket relaxation.
 
 **Self red-team evidence:** rt-038 (Postgres row).
 
-### 11. Upstream MCP servers that normalize content can hide injections from Vault
+### 15. Upstream MCP servers that normalize content can hide injections from Vault
 The `mcp-server-fetch` MCP server converts HTML to Markdown before returning it
 to the client. That conversion **strips HTML comments**. So an attacker who
 hides a prompt-injection inside `<!-- ignore previous instructions -->` is
@@ -197,6 +197,42 @@ A motivated attacker who tests against our public corpus will find paraphrases
 that land at distance > 0.35 from every entry. Our corpus is intentionally
 public for auditability — that publication is a deliberate trade-off. The
 defense for this class is L3, not L2.
+
+### 11. Offline mode (no L3) — production unsupported
+
+Without an LLM API key, Vault cannot reliably distinguish protocol-encoded data
+(base64-wrapped JSON, binary blobs, encrypted payloads) from encoded injection
+attacks. Our measurements:
+
+- **40% false positive rate** on a 70-entry benign-encoded fixture set (Pub/Sub,
+  SQS, webhooks, binary, encrypted) — measured 2026-05-21
+- **0% FP** on structured business JSON without base64 fields
+- **~45% true positive rate** on the canonical attack distribution (last clean
+  measurement: pre-contamination v1 eval, 2026-05-19)
+
+These limits arise from Layer 2 (`bge-small` sentence embeddings) treating
+high-entropy structureless data as semantically close to encoded attack
+vocabulary. This is a fundamental limit of small embedding models, not a tuning
+issue. The pipeline includes a bypass for the subset of cases where L2 distance
+is high (> 0.40), but most binary and encrypted payloads cluster at 0.33–0.40
+and are unaffected by this mitigation.
+
+**Recommendation:** Production deployments **must** use Layer 3 (an LLM judge).
+With L3 enabled, all 40% of protocol-data false positives correctly resolve to
+clean, and TPR rises to 100% on the structural eval (80-entry holdout-v2,
+2026-05-21).
+
+Offline mode is supported for:
+- Development environments and CI testing
+- Local agents with natural-language tool responses only
+
+Offline mode is **not** supported for:
+- Production MCP servers with protocol-encoded traffic (Pub/Sub, SQS, S3,
+  webhooks with base64 fields)
+- Binary content or encrypted payloads
+- Any deployment where a false positive rate above 5% is unacceptable
+
+**Status:** Documented and accepted. Not a tuning target — the fix is L3.
 
 ## Limitations that have already been closed (history, for transparency)
 

@@ -1,10 +1,21 @@
-# Vault — MCP Prompt Injection Proxy
+# Vault — MCP Prompt Injection Firewall
 
 **Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **Twitter/X:** [@vaultmcpbase](https://x.com/vaultmcpbase)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
 
-A drop-in proxy that scans MCP tool responses for prompt-injection patterns before they reach your agent's context window. Layered detection (regex + embedding similarity + optional LLM judge), an opt-in capability firewall, manifest drift verification, and on-chain reputation lookups for the servers you connect to.
+Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through three layers of detection.
 
-On our public eval of 188 attacks (Greshake et al., NVIDIA garak, OWASP LLM Top 10, published blog PoCs, encoded-payload techniques, and multi-turn setups), **Vault catches 184 — 97.9% overall, 99.5% of in-scope third-party prompt injections**. False positive rate is **0.0%** across 110 benign documents. See [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) for known gaps and [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) for the threat model. Without `ANTHROPIC_API_KEY`, TPR falls to 45.2% (L1+L2 only).
+---
+
+## Requirements
+
+Vault requires an LLM API key for production use. We support:
+
+- **Anthropic** (`claude-haiku-4-5-20251001`, recommended) — set `ANTHROPIC_API_KEY`
+- **OpenAI-compatible endpoints** (`gpt-4o-mini`, or self-hosted via vLLM/llama.cpp) — set `OPENAI_API_KEY`
+
+Without an API key, Vault runs in offline mode for development and CI environments. Offline mode has documented limitations on protocol-encoded data — see [LIMITATIONS §11](packages/LIMITATIONS.md).
+
+---
 
 ```bash
 # Wrap any MCP server — zero config change to your agent
@@ -41,18 +52,18 @@ All numbers below are reproducible from the harness committed in this repo. Each
 
 ## What Vault catches
 
-Measured against 185 in-scope third-party prompt injections (sources: published papers, OWASP LLM Top 10, NVIDIA garak probes, blog PoCs, encoded payloads, multi-turn setups):
+With L3 enabled (Anthropic API key set), Vault catches 100% of attacks in our 80-entry public structural-generalization eval, at 0% false positive rate on 100 benign documents. Detection methodology and datasets are public — see `/packages/eval/`.
+
+Breakdown by category (80 attacks, holdout-v2 structural-generalization eval, 2026-05-21):
 
 | Attack category | Caught / Total | TPR |
 |---|---|---|
-| instruction_override | 43 / 43 | 100.0% |
-| jailbreak | 32 / 32 | 100.0% |
-| exfiltration | 33 / 33 | 100.0% |
-| multi_turn_setup | 27 / 28 | 96.4% |
-| role_hijack | 29 / 29 | 100.0% |
-| encoded_payload | 20 / 20 | 100.0% |
+| exfiltration | 60 / 60 | 100.0% |
+| instruction_override | 13 / 13 | 100.0% |
+| multi_turn_setup | 6 / 6 | 100.0% |
+| encoded_payload | 1 / 1 | 100.0% |
 
-Numbers are from `packages/eval/results/eval-2026-05-20-1017.md` with L3 enabled (Anthropic Haiku 4.5). See [Measured performance](#measured-performance) for latency and throughput context.
+Numbers are from `packages/eval/results/eval-clean-baseline-v2-L3-enabled-2026-05-21.md` with L3 enabled (Anthropic Haiku 4.5). Dataset: `packages/eval/datasets/holdout-v2-novel/` (50 attacks) and `packages/eval/datasets/holdout-v2-paraphrase/` (30 attacks), verified non-overlapping with the detection corpus. See [Measured performance](#measured-performance) for latency and throughput context.
 
 ---
 
@@ -60,10 +71,33 @@ Numbers are from `packages/eval/results/eval-2026-05-20-1017.md` with L3 enabled
 
 - **User-initiated jailbreaks** — out of scope by design. Vault sits between the agent and the upstream MCP server, not between the user and the agent. Jailbreaks typed directly by the user are the model provider's responsibility, not a proxy's.
 - **Genuinely novel injection patterns** — attacks that paraphrase far from all known examples (L2 cosine distance > 0.50 and no L3 key set) evade detection. The corpus covers published 2022–2024 attack literature; novel post-cutoff techniques may not be represented. See [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) §3.
+- **Protocol-encoded data without L3** — MCP tools that return Pub/Sub messages, SQS payloads, binary blobs, or encrypted content will produce false positives when L3 is disabled (~40% FP rate on that traffic class). See LIMITATIONS §11.
 - **Multi-turn attacks split across sessions** — Vault scans each MCP response independently. A sleeper directive established in session A and activated in session B is outside Vault's detection window. See LIMITATIONS §10.
 - **Image/audio embedded instructions** — Vault is text-only. Binary content in tool responses (images, audio files, PDFs) is forwarded to the agent unscanned. If your MCP server returns image data or vision-model inputs, Vault provides no protection for instructions hidden in that content.
 
-For the complete gap taxonomy: [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — 14 sections covering multilingual, semantic, structural, normalization, self-referential, and scale gaps. [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) maps each gap to the threat it leaves open.
+For the complete gap taxonomy: [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md) — 15 sections covering multilingual, semantic, structural, normalization, self-referential, protocol-encoding, and scale gaps. [`packages/SECURITY_MODEL.md`](packages/SECURITY_MODEL.md) maps each gap to the threat it leaves open.
+
+---
+
+## Offline mode (no API key)
+
+When `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are both unset, Vault runs in offline mode:
+
+- Layer 0 (decoder) and Layer 1 (heuristics) operate normally
+- Layer 2 (embedding similarity) operates normally
+- Layer 3 (LLM judge) is disabled
+
+**Suitable for:**
+- Development environments and local testing
+- CI/CD pipelines where the agent isn't running production traffic
+- Air-gapped or offline deployments
+
+**NOT suitable for:**
+- Production MCP servers returning Pub/Sub, SQS, or webhook payloads
+- Tools that return binary content (images, encrypted blobs)
+- Any deployment where false positive rate above 5% is unacceptable
+
+See [LIMITATIONS §11](packages/LIMITATIONS.md) for specific FP measurements and rationale.
 
 ---
 
@@ -79,7 +113,7 @@ Layer 3 (LLM judge) calls Anthropic Haiku 4.5 on responses that fall in L2's unc
 
 - **~$0.0005 per uncertain-zone request** (Haiku 4.5 input + small output at current pricing)
 - **~$0.04/hr at 100 req/hr in production** (20–40% L3 call rate on real traffic)
-- **$0 without API key** — L1+L2 only, TPR drops to 45.2%. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
+- **$0 without API key** — L1+L2 only, TPR drops to 45.2% and FP rate on protocol-encoded traffic rises to ~40%. See [Offline mode](#offline-mode-no-api-key) above. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
 
 The high L3 rate in our eval (91%) reflects an adversarial dataset — nearly every entry is an attack that lands in L2's uncertain zone by design. Real MCP traffic (mostly clean tool output) has a much lower L3 call rate.
 

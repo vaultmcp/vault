@@ -5,8 +5,8 @@ Generated 2026-05-20T15:33:53.117Z
 ## Setup
 
 ```
-/usr/local/bin/node /Users/user/vault-workspace/packages/proxy/dist/index.js -- /usr/local/bin/node /Users/user/vault-workspace/packages/eval/load/fixture-server.mjs
-PATH=/Users/user/.npm-global/bin:/Users/user/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Users/user/.foundry/bin HOME=/Users/user VAULT_MODE=block VAULT_MANIFEST_CHECK=on VAULT_TELEMETRY=0
+/usr/local/bin/node /path/to/vault/packages/proxy/dist/index.js -- /usr/local/bin/node /path/to/vault/packages/eval/load/fixture-server.mjs
+PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/user VAULT_MODE=block VAULT_MANIFEST_CHECK=on VAULT_TELEMETRY=0
 ```
 
 - Target rate: **100 req/s**

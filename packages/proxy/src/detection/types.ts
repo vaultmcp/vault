@@ -17,6 +17,7 @@ export interface DetectionResult {
   matchedCategory?: string;
   distance?: number;
   l3Status?: L3Status;
+  bypassReason?: string;
 }
 
 export function rankVerdict(v: Verdict): number {
