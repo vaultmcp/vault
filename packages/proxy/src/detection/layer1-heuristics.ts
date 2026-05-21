@@ -60,7 +60,8 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
 
   // JSON/data key: "_internal_ai_directive" — specific field name injected into structured
   // data (API responses, JSON payloads). Never appears in legitimate API responses.
-  { name: 'internal-ai-directive-key', re: /['"_]internal[_-]ai[_-]directive['"]/i },
+  // The underscore prefix is required to distinguish from hypothetical legitimate field names.
+  { name: 'internal-ai-directive-key', re: /_internal[_-]ai[_-]directive\b/i },
 ];
 
 const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;
