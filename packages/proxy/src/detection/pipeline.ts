@@ -1,4 +1,5 @@
 import { runLayer1 } from './layer1-heuristics.js';
+import { runLayer0, makeLayer0Result } from './layer0-decoder.js';
 import { runLayer2 } from './layer2-embeddings.js';
 import { runLayer3 } from './layer3-judge.js';
 import { Layer3Unavailable } from './clients/types.js';
@@ -25,6 +26,12 @@ export async function runPipeline(text: string, context?: JudgeContext): Promise
   if (text.length >= readStreamThreshold()) {
     return runStreamingPipeline(text, context);
   }
+
+  // Layer 0: deterministic decode-then-L1. Catches encoded-payload attacks before L1
+  // sees the raw text. Only fires when decoded content trips L1 — not on mere presence
+  // of base64 or hex (which is common in benign tool responses).
+  const l0 = runLayer0(text);
+  if (l0.fired) return makeLayer0Result(l0);
 
   const l1 = runLayer1(text);
 

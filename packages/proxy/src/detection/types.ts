@@ -12,7 +12,7 @@ export interface DetectionResult {
   confidence: number;
   reasoning: string;
   detectedPatterns: string[];
-  layer?: 1 | 2 | 3;
+  layer?: 0 | 1 | 2 | 3;
   matchedId?: string;
   matchedCategory?: string;
   distance?: number;
