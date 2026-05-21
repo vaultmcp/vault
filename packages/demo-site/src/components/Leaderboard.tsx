@@ -1,21 +1,4 @@
-// MCP server reputation leaderboard. For Sprint 1 this renders mock data; in Sprint 2 after
-// Sepolia/mainnet deploy of VaultReputation, this becomes a viem read from getLeaderboard(10).
-
-interface LeaderboardRow {
-  url: string;
-  score: number;
-  totalScans: number;
-  totalBlocks: number;
-  source: 'mock' | 'chain';
-}
-
-const MOCK: LeaderboardRow[] = [
-  { url: 'stdio:filesystem', score: 1000, totalScans: 1342, totalBlocks: 0, source: 'mock' },
-  { url: 'stdio:postgres', score: 994, totalScans: 871, totalBlocks: 5, source: 'mock' },
-  { url: 'https://mcp.notion.example/v1', score: 956, totalScans: 612, totalBlocks: 27, source: 'mock' },
-  { url: 'https://mcp.shady-tool.example/v1', score: 412, totalScans: 287, totalBlocks: 169, source: 'mock' },
-  { url: 'stdio:github', score: 1000, totalScans: 248, totalBlocks: 0, source: 'mock' },
-];
+import { readLeaderboard, readScore, defaultNetwork } from '@/lib/chain';
 
 function scoreColor(score: number): string {
   if (score >= 900) return 'text-accent';
@@ -24,7 +7,26 @@ function scoreColor(score: number): string {
   return 'text-bad';
 }
 
-export function Leaderboard() {
+export async function Leaderboard() {
+  const network = defaultNetwork();
+  let rows: { url: string; score: number; totalScans: number; totalBlocks: number }[] = [];
+  let error = false;
+
+  try {
+    const leaderboard = await readLeaderboard(10, network);
+    if (leaderboard.length > 0) {
+      const scores = await Promise.all(leaderboard.map(({ url }) => readScore(url, network)));
+      rows = scores.map((s) => ({
+        url: s.server,
+        score: s.score,
+        totalScans: s.totalScans,
+        totalBlocks: s.totalBlocks,
+      }));
+    }
+  } catch {
+    error = true;
+  }
+
   return (
     <section className="border-b border-line">
       <div className="mx-auto max-w-6xl px-6 py-16">
@@ -43,19 +45,29 @@ export function Leaderboard() {
               </tr>
             </thead>
             <tbody>
-              {MOCK.map((r) => (
-                <tr key={r.url} className="border-t border-line">
-                  <td className="px-4 py-3 break-all">{r.url}</td>
-                  <td className={`px-4 py-3 text-right font-bold ${scoreColor(r.score)}`}>{r.score}</td>
-                  <td className="px-4 py-3 text-right text-dim">{r.totalScans.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-dim">{r.totalBlocks.toLocaleString()}</td>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-dim text-xs">
+                    {error
+                      ? 'chain read failed — check back soon'
+                      : 'no servers tracked yet · install the proxy to appear here'}
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.url} className="border-t border-line">
+                    <td className="px-4 py-3 break-all">{r.url}</td>
+                    <td className={`px-4 py-3 text-right font-bold ${scoreColor(r.score)}`}>{r.score}</td>
+                    <td className="px-4 py-3 text-right text-dim">{r.totalScans.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-dim">{r.totalBlocks.toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         <p className="mt-3 text-xs text-dim">
-          Sample data shown · live chain reads after mainnet deploy
+          Live · {network} · updates every 60s
         </p>
       </div>
     </section>

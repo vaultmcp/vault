@@ -37,11 +37,11 @@ describe('vault init — parseArgs', () => {
 });
 
 describe('vault init — isAlreadyWrapped', () => {
-  it('detects npx @vaultmcp/mcp-proxy wrap', () => {
-    expect(isAlreadyWrapped({ command: 'npx', args: ['-y', '@vaultmcp/mcp-proxy', '--', 'x'] })).toBe(true);
+  it('detects npx @aimcpvault/mcp-proxy wrap', () => {
+    expect(isAlreadyWrapped({ command: 'npx', args: ['-y', '@aimcpvault/mcp-proxy', '--', 'x'] })).toBe(true);
   });
   it('detects npx.cmd wrap (Windows)', () => {
-    expect(isAlreadyWrapped({ command: 'npx.cmd', args: ['@vaultmcp/mcp-proxy', '--', 'x'] })).toBe(true);
+    expect(isAlreadyWrapped({ command: 'npx.cmd', args: ['@aimcpvault/mcp-proxy', '--', 'x'] })).toBe(true);
   });
   it('detects global mcp-proxy bin', () => {
     expect(isAlreadyWrapped({ command: 'mcp-proxy', args: ['--', 'x'] })).toBe(true);
@@ -101,7 +101,7 @@ describe('vault init — planEntry', () => {
     expect(a.kind).toBe('wrap-stdio');
     if (a.kind === 'wrap-stdio') {
       expect(a.after.command).toBe('npx');
-      expect(a.after.args).toEqual(['-y', '@vaultmcp/mcp-proxy', '--', 'npx', '-y', '@modelcontextprotocol/server-filesystem', '/tmp']);
+      expect(a.after.args).toEqual(['-y', '@aimcpvault/mcp-proxy', '--', 'npx', '-y', '@modelcontextprotocol/server-filesystem', '/tmp']);
     }
   });
 
@@ -109,7 +109,7 @@ describe('vault init — planEntry', () => {
     const a = planEntry('git', { command: 'uvx', args: ['mcp-server-git'] }, cfgDir);
     expect(a.kind).toBe('wrap-stdio');
     if (a.kind === 'wrap-stdio') {
-      expect(a.after.args).toEqual(['-y', '@vaultmcp/mcp-proxy', '--', 'uvx', 'mcp-server-git']);
+      expect(a.after.args).toEqual(['-y', '@aimcpvault/mcp-proxy', '--', 'uvx', 'mcp-server-git']);
     }
   });
 
@@ -118,7 +118,7 @@ describe('vault init — planEntry', () => {
     expect(a.kind).toBe('wrap-http');
     if (a.kind === 'wrap-http') {
       expect(a.after.command).toBe('npx');
-      expect(a.after.args).toEqual(['-y', '@vaultmcp/mcp-proxy', '--transport', 'http', '--upstream', 'https://mcp.example.com/v1']);
+      expect(a.after.args).toEqual(['-y', '@aimcpvault/mcp-proxy', '--transport', 'http', '--upstream', 'https://mcp.example.com/v1']);
       expect(a.after.url).toBeUndefined();
     }
   });
@@ -126,7 +126,7 @@ describe('vault init — planEntry', () => {
   it('skips already-wrapped silently', () => {
     const a = planEntry(
       'fs',
-      { command: 'npx', args: ['-y', '@vaultmcp/mcp-proxy', '--', 'x'] },
+      { command: 'npx', args: ['-y', '@aimcpvault/mcp-proxy', '--', 'x'] },
       cfgDir,
     );
     expect(a.kind).toBe('skip-wrapped');
@@ -249,7 +249,7 @@ describe('vault init — renderPlan', () => {
       path: '/x/config.json',
       exists: true,
       actions: [
-        { kind: 'wrap-stdio' as const, name: 'a', before: { command: 'npx', args: ['x'] }, after: { command: 'npx', args: ['-y', '@vaultmcp/mcp-proxy', '--', 'npx', 'x'] } },
+        { kind: 'wrap-stdio' as const, name: 'a', before: { command: 'npx', args: ['x'] }, after: { command: 'npx', args: ['-y', '@aimcpvault/mcp-proxy', '--', 'npx', 'x'] } },
         { kind: 'skip-wrapped' as const, name: 'b' },
         { kind: 'skip-bash-shell' as const, name: 'c', reason: 'shell-wrapped' },
         { kind: 'skip-disabled' as const, name: 'd' },

@@ -26,12 +26,12 @@ function readVersion(): string {
 const HELP = `vault mcp-proxy — scans MCP tool responses for prompt injection
 
 Usage
-  npx @vaultmcp/mcp-proxy -- <command> [args...]                      # stdio (wrap a local MCP server)
-  npx @vaultmcp/mcp-proxy --transport http --upstream <url> [--port]  # http (proxy a remote MCP server)
+  npx @aimcpvault/mcp-proxy -- <command> [args...]                      # stdio (wrap a local MCP server)
+  npx @aimcpvault/mcp-proxy --transport http --upstream <url> [--port]  # http (proxy a remote MCP server)
 
 Examples
-  npx @vaultmcp/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /tmp
-  npx @vaultmcp/mcp-proxy --transport http --upstream https://mcp.example.com/v1 --port 8800
+  npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /tmp
+  npx @aimcpvault/mcp-proxy --transport http --upstream https://mcp.example.com/v1 --port 8800
 
 Flags
   --transport <stdio|http>   default: stdio
@@ -99,7 +99,7 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs {
   if (argv.length === 0) return { transport: 'stdio', showHelp: true, noArgs: true };
   if (argv.includes('--version') || argv.includes('-v')) {
-    process.stdout.write(`@vaultmcp/mcp-proxy ${readVersion()}\n`);
+    process.stdout.write(`@aimcpvault/mcp-proxy ${readVersion()}\n`);
     process.exit(0);
   }
   if (argv.includes('--help') || argv.includes('-h')) {

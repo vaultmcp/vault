@@ -129,9 +129,9 @@ export function defaultConfigPaths(): string[] {
 
 // ---- Wrap logic ----------------------------------------------------------
 
-const VAULT_PACKAGE = '@vaultmcp/mcp-proxy';
+const VAULT_PACKAGE = '@aimcpvault/mcp-proxy';
 
-/// True if the entry is already wrapped by vault (either npx @vaultmcp/mcp-proxy or a global mcp-proxy binary).
+/// True if the entry is already wrapped by vault (either npx @aimcpvault/mcp-proxy or a global mcp-proxy binary).
 export function isAlreadyWrapped(entry: McpServerEntry): boolean {
   const cmd = entry.command?.toLowerCase() ?? '';
   const args = entry.args ?? [];
