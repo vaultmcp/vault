@@ -1,0 +1,50 @@
+# VaultMCP
+
+> Drop-in proxy that scans MCP tool responses for prompt injection before your agent sees them.
+
+VaultMCP sits between your AI agent and any MCP server. Every tools/call response is scanned through four detection layers before it reaches the agent's context window.
+
+## Detection pipeline
+
+- Layer 0: Deterministic decoder — catches base64, hex, URL-encoded, HTML-entity, and nested payloads before semantic analysis
+- Layer 1: Regex heuristics — 28 patterns covering instruction overrides, role hijacking, exfiltration directives, encoded payloads, and Unicode tag smuggling. Sub-millisecond.
+- Layer 2: Embedding similarity — bge-small-en-v1.5 cosine distance against a 200-entry curated attack corpus. ~11ms.
+- Layer 3: LLM judge — Anthropic Haiku or OpenAI-compatible model for borderline cases. ~1.5s. Requires ANTHROPIC_API_KEY or OPENAI_API_KEY.
+
+## Measured performance (2026-05-21 one-shot holdout eval)
+
+- TPR: 100% (80/80 attacks caught) with L3 enabled
+- 95% confidence interval lower bound: 95.5%
+- FPR: 0.0% (0/100 benign documents flagged)
+- Without API key (L1+L2 only): near 0% TPR on novel out-of-distribution attacks
+
+## Install
+
+    npx @aimcpvault/mcp-proxy@beta -- <your MCP server command>
+
+Example wrapping the filesystem server:
+
+    export ANTHROPIC_API_KEY=sk-ant-...
+    npx @aimcpvault/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
+
+## On-chain reputation
+
+Every scan verdict can be attested on Base via EAS. The proxy accumulates per-server reputation scores queryable by any agent or marketplace. Deployed on Base Sepolia; mainnet pending.
+
+## Known limitations
+
+- Multilingual attacks: L1 is English-only; L2/L3 handle some but not all
+- Long-document dilution: a short attack in a large response may score below threshold
+- Multi-turn cross-session attacks: Vault scans per-response, not across sessions
+- Image/audio content: text only; binary responses are forwarded unscanned
+- Offline mode (no API key): near-zero detection on novel attacks
+
+Full limitations: https://github.com/vaultmcp/vault/blob/main/packages/LIMITATIONS.md
+
+## Source and eval
+
+- Repository: https://github.com/vaultmcp/vault
+- npm: https://www.npmjs.com/package/@aimcpvault/mcp-proxy
+- Eval methodology and holdout manifests: packages/eval/
+- Postmortem (contamination incident, corrective actions): packages/POSTMORTEM-2026-05-20-contamination.md
+- Demo and live leaderboard: https://vaultmcp.io

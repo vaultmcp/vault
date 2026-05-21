@@ -7,7 +7,7 @@
 To report a vulnerability:
 
 1. **Preferred**: Open a [GitHub Security Advisory](../../security/advisories/new) — this creates a private thread with the maintainers.
-2. **Alternate**: Email the maintainer directly (address in the GitHub profile).
+2. **Alternate**: Email **security@vaultmcp.io**.
 
 Include:
 - Description of the vulnerability and its impact
