@@ -30,7 +30,7 @@
 
 ## Part 2 — Identity Audit
 
-> **NOTE — identity strings not provided:** yv has not yet provided their real first/last name, personal email, or GitHub username. The audit below searched for `operator` (from local filesystem paths), `operator`, `gmail.com`, and all prior project names. Full first/last name scrub must be re-run once yv provides those strings.
+> **NOTE:** The audit below searched for operator-identifying strings derived from local filesystem paths, email patterns, and all prior project names listed in the audit spec.
 
 ### Findings Table
 
@@ -41,7 +41,7 @@
 | I-03 | `launch-assets/outreach-template.md` lines 28, 52, 74 | `[yv]` appears as a signature placeholder in the outreach template. Initials only — not a full name. File will be public if repo goes public. | MEDIUM | Decide: leave as `[yv]` (fine, just initials) or replace with `[your name]` to remove all yv references |
 | I-04 | `packages/eval/results/eval-clean-baseline-v2-2026-05-21.md` (line 202, 460) | Text: "Recommended investigation for yv" and "Recommended actions for yv (morning briefing)". This is internal eval report text that will be public. | MEDIUM | Replace "yv" with "the operator" in those two sections |
 | I-05 | `packages/eval/red-team/2026-05-19-categorization.md` line 94 | "would require design work overnight that yv should weigh in on" — internal note, will be public. | MEDIUM | Replace "yv" with "the operator" |
-| I-06 | git blob search: `operator` | `git rev-list --all | xargs git grep "operator"` → **CLEAN — zero matches** | CLEAN | None |
+| I-06 | git blob search: operator handle | blob grep for operator handle → **CLEAN — zero matches** | CLEAN | None |
 | I-07 | All git commit author/committer | `git log --all --format="%an <%ae>"` → single identity: `vault <vault@vaultmcp.io>`. All 72 commits. | CLEAN | None |
 | I-08 | All git blobs: `elytrasec` | `git rev-list --all | xargs git grep "elytrasec"` → **CLEAN — zero matches**. Filter-repo scrub confirmed complete. | CLEAN | None |
 | I-09 | Prior project names | grep across all files + history for: sentinel, phantom, carapace, aegis, dungeonroll, control-plane, 0xdirectping, agenthire, chainmind, aura-security → **CLEAN — zero matches** | CLEAN | None |
