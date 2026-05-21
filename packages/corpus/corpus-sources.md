@@ -7,3 +7,4 @@ Format: `<source> — used for: <categories>`
 
 - garak/probes/dan.py (github.com/leondz/garak) — used for: role_hijack, jailbreak (DAN 5/6/7/10/11/12, AIM, EvilBOT, STAN, DUDE, AntiDAN variants)
 - garak/probes/encoding.py (github.com/leondz/garak) — used for: encoded_payload, instruction_override (ROT13, Morse, NATO phonetic, ASCII art, leet-speak, homoglyph, character substitution)
+- Greshake et al. 2023 "Not what you've signed up for" arxiv.org/abs/2302.12173 — used for: instruction_override, exfiltration, multi_turn_setup (indirect injection via search index, documents, tool output, memory poisoning, shared resources, §4.1–4.4)
