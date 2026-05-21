@@ -109,6 +109,4 @@ These are measured from a public one-shot holdout eval, not cherry-picked. See `
 
 ## Demo site
 
-**http://vaultmcp.io** — live leaderboard, threat feed, and scan demo (Base Sepolia).
-
-This will move to vaultmcp.io when DNS is set up. For now the IP works.
+**https://vaultmcp.io** — live leaderboard, threat feed, and scan demo (Base Sepolia).

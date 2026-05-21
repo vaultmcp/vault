@@ -2,6 +2,15 @@
   "name": "@aimcpvault/mcp-proxy",
   "version": "0.1.0-rc.1",
   "description": "MCP prompt-injection scanning proxy — 100% TPR / 0% FPR on 80-entry holdout (L3 enabled)",
+  "license": "MIT",
+  "homepage": "https://vaultmcp.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vaultmcp/vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vaultmcp/vault/issues"
+  },
   "type": "module",
   "bin": {
     "mcp-proxy": "dist/index.js",

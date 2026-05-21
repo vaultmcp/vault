@@ -2,7 +2,7 @@
 // beta:status — quick dashboard for Phase A monitoring
 // Usage: node scripts/beta-status.mjs
 
-const COLLECTOR = 'http://vaultmcp.io';
+const COLLECTOR = 'https://vaultmcp.io/api';
 const SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com';
 const VAULT_REPUTATION = '0x3A977E4D8BA43367cc41BB4695feFF4615fec189';
 
@@ -79,7 +79,7 @@ async function main() {
   }
 
   console.log('\n--- What to check next ---');
-  console.log('  Demo site     : http://vaultmcp.io');
+  console.log('  Demo site     : https://vaultmcp.io');
   console.log('  Findings log  : launch-assets/beta-findings.md');
   console.log('  Full eval     : pnpm --filter @vaultmcp/eval run eval -- --set both');
   console.log();

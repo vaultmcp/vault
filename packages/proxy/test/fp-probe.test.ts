@@ -1,7 +1,7 @@
 // Real-content false-positive probe.
 //
 // Runs the full Layers 1 + 2 detection pipeline against a corpus of legitimate technical content
-// (security-scanner.example marketing, MCP docs, prompt-injection research excerpts, OS docs) and asserts
+// (blockchain security scanner marketing, MCP docs, prompt-injection research excerpts, OS docs) and asserts
 // that none of it is flagged. When this test fails, the failure message names the offending fixture
 // and the matched pattern so the regex / threshold can be tuned.
 //
@@ -22,7 +22,7 @@ interface LegitFixture {
 // that an MCP agent might read; flagging any of them is a false positive.
 const LEGIT_CORPUS: LegitFixture[] = [
   {
-    name: 'security-scanner.example marketing page',
+    name: 'blockchain security scanner marketing page',
     text:
       'Argus is an autonomous security scanning platform designed for blockchain smart contracts, particularly on Base and Solana. The service combines pattern detection with AI analysis to identify vulnerabilities before deployment. ' +
       'Core Capabilities. The platform operates through several integrated components. Scanner Engine: Runs 180 detectors across smart contracts, infrastructure, and application code. Detection focuses on known exploit patterns, hardcoded secrets, authorization flaws, and Solidity-specific antipatterns. ' +
