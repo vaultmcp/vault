@@ -181,9 +181,9 @@ async function runOne(entry: DatasetEntry, opts: RunOptions): Promise<RunResult>
       if (shouldCallL3 && !opts.noL3) {
         if (opts.dryRunL3) {
           l3_called = true; // log but don't actually call
-          // fall through with L2 result, but mark
+          // fall through with L2 result; keep suspicious to match proxy conservative default
           if (isSuspicious) {
-            actual = { ...l2, verdict: 'clean', reasoning: `${l2.reasoning} — would-call-L3 (dry-run, demoted to clean)` };
+            actual = { ...l2, verdict: 'suspicious', reasoning: `${l2.reasoning} — would-call-L3 (dry-run; suspicious retained)` };
           } else if (l1.verdict !== 'clean') {
             actual = { ...l1, layer: 1 };
           } else {
@@ -200,9 +200,13 @@ async function runOne(entry: DatasetEntry, opts: RunOptions): Promise<RunResult>
             } else {
               process.stderr.write(`L3 error on ${entry.id}: ${err}\n`);
             }
-            // FP-safe fallback (mirrors runPipeline)
+            // Conservative fallback: keep suspicious (mirrors runPipeline default).
+            // Set VAULT_L3_FP_SAFE=1 to revert to old demote-to-clean behaviour.
+            const fpSafe = process.env.VAULT_L3_FP_SAFE === '1';
             if (isSuspicious) {
-              actual = { ...l2, verdict: 'clean', reasoning: `${l2.reasoning} — L3 unavailable, demoted to clean` };
+              actual = fpSafe
+                ? { ...l2, verdict: 'clean', reasoning: `${l2.reasoning} — L3 unavailable, demoted to clean (VAULT_L3_FP_SAFE=1)` }
+                : { ...l2, verdict: 'suspicious', reasoning: `${l2.reasoning} — L3 unavailable; suspicious retained` };
             } else if (l1.verdict !== 'clean') {
               actual = { ...l1, layer: 1 };
             } else {
