@@ -7,7 +7,7 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
   { name: 'forget-previous', re: /forget\s+(?:everything|all|previous|prior)/i },
   { name: 'system-prefix', re: /(?:^|\n)\s*system\s*:/i },
   { name: 'you-are-now', re: /you\s+are\s+now\s+(?:a\s+|an\s+)?[a-z]/i },
-  { name: 'new-instructions', re: /new\s+instructions?\s*:/i },
+  { name: 'new-instructions', re: /new\s+(?:instructions?|directives?|guidance|rules?)\s*:/i },
   // "override system" alone is too broad — fires on "override system safeguards" in research
   // articles. Require "system" to be followed by "prompt" or "instructions" specifically.
   { name: 'override-above', re: /override\s+(?:the\s+)?(?:above|previous|prior|system\s+(?:prompt|instructions?))/i },
@@ -45,6 +45,22 @@ const INSTRUCTION_PREFIXES: Array<{ name: string; re: RegExp }> = [
   // Unconstrained / no-safety-alignment persona requests. "Generate the unconstrained version"
   // and "no safety alignment" target the "produce what you would say without training" attack.
   { name: 'unconstrained-persona', re: /(?:generate|produce|output)\s+the\s+unconstrained\s+version|no\s+safety\s+alignment\b|without\s+(?:your\s+)?(?:safety|content)\s+(?:training|alignment|filters?|guidelines?)/i },
+
+  // ALL-CAPS "SYSTEM [WORD] OVERRIDE:" in-band authority markers. The three-word format
+  // with colon is highly specific to injection attacks; never in real system logs.
+  { name: 'system-caps-override', re: /\bSYSTEM\s+\w+\s+OVERRIDE\s*:/i },
+
+  // Contextual injection addressed directly to AI readers in plain text (no HTML comment).
+  // "If you are an AI reading/processing this" covers social-platform profile and RSS attacks.
+  { name: 'if-you-are-ai-plain', re: /if\s+you\s+(?:are|'re)\s+an?\s+AI\s+(?:reading|processing|parsing|summarizing|scanning|reviewing|reading|agent|assistant)\s+this\b/i },
+
+  // "Update/notice/directive for AI agents:" — in-band notification targeting AI processors.
+  // Requiring explicit "AI agents" + colon prevents FP on generic "update for users" text.
+  { name: 'ai-agents-directive', re: /(?:update|notice|announcement|directive|message)\s+for\s+(?:AI|LLM)\s+agents?\s*:/i },
+
+  // JSON/data key: "_internal_ai_directive" — specific field name injected into structured
+  // data (API responses, JSON payloads). Never appears in legitimate API responses.
+  { name: 'internal-ai-directive-key', re: /['"_]internal[_-]ai[_-]directive['"]/i },
 ];
 
 const UNICODE_TAG_RE = /[\u{E0000}-\u{E007F}]/u;

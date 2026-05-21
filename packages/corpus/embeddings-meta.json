@@ -1,6 +1,6 @@
 {
   "dim": 384,
-  "count": 117,
+  "count": 125,
   "model": "Xenova/bge-small-en-v1.5",
   "items": [
     {
@@ -586,6 +586,46 @@
     {
       "id": "ex-015",
       "category": "exfiltration",
+      "severity": "high"
+    },
+    {
+      "id": "jb-019",
+      "category": "jailbreak",
+      "severity": "medium"
+    },
+    {
+      "id": "mt-023",
+      "category": "multi_turn_setup",
+      "severity": "medium"
+    },
+    {
+      "id": "mt-024b",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "mt-025",
+      "category": "multi_turn_setup",
+      "severity": "high"
+    },
+    {
+      "id": "io-030",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "io-031",
+      "category": "instruction_override",
+      "severity": "high"
+    },
+    {
+      "id": "io-032",
+      "category": "instruction_override",
+      "severity": "medium"
+    },
+    {
+      "id": "jb-020",
+      "category": "jailbreak",
       "severity": "high"
     }
   ]
