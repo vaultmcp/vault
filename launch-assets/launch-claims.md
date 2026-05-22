@@ -2,7 +2,7 @@
 
 ## What Vault is
 
-A production prompt-injection firewall that sits in front of MCP servers. Intercepts every tool response, scans through four layers (L0 decoder, L1 heuristics, L2 embedding similarity, L3 LLM judge), blocks malicious content before the agent reads it. Anchors verdicts on Base via EAS attestations, accumulating per-server reputation scores any agent or marketplace can query.
+A production prompt-injection firewall that sits in front of MCP servers. Intercepts every tool response, scans through four layers (L0 deterministic decoder, L1 heuristics, L2 embedding similarity, L3 LLM judge), and blocks malicious content before the agent reads it. Drop-in proxy — zero config change to your agent or MCP server.
 
 ## What we claim
 
@@ -10,6 +10,7 @@ A production prompt-injection firewall that sits in front of MCP servers. Interc
 - **95% confidence interval on TPR: 95.5% to 100%.** We don't claim higher than 95.5% as a lower bound until we test against larger samples.
 - All detection methodology, datasets, and limitations are public in the repository
 - **40% FP rate in offline mode** (no API key) on protocol-encoded data — documented as a development-environment limitation, not a production configuration
+- **Optional opt-in attestation to Base via EAS** for operators who want a public reputation trail. Off by default. A continuous attestation feed and public reputation registry land in **v0.3**.
 
 ## What we don't claim
 
@@ -25,7 +26,7 @@ A production prompt-injection firewall that sits in front of MCP servers. Interc
 - The benign-v2 set: `packages/eval/datasets/benign-v2/`
 - `packages/LIMITATIONS.md` including §11 (offline mode) and §14 (large-payload scan latency)
 - `POSTMORTEM-2026-05-20-contamination.md` — the methodology failure we caught and recovered from before launch
-- The Base contract address and a sample attestation URL (to be filled at mainnet deploy)
+- The Sepolia contract address (mainnet deployment lands with v0.3)
 
 ## Eval integrity note
 

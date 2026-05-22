@@ -54,8 +54,7 @@ export function Hero() {
             { label: '100% TPR · 95.5%+ CI', accent: true },
             { label: '0.0% FPR', accent: false },
             { label: '80 / 80 caught', accent: false },
-            { label: 'L1 · L2 · L3', accent: false },
-            { label: 'Base / EAS', accent: false },
+            { label: 'L0 · L1 · L2 · L3', accent: false },
           ].map(({ label, accent }) => (
             <span
               key={label}

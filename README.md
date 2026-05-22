@@ -265,9 +265,11 @@ VAULT_MANIFEST_CHECK=on   # default — warn on drift
 VAULT_MANIFEST_CHECK=strict  # treat drift as error
 ```
 
-### On-Chain Reputation
+### Optional: on-chain attestation (opt-in)
 
-Every scan verdict can be attested on-chain via [EAS](https://attest.sh) on Base, building a public, append-only reputation score for each MCP server key. Operators can check a server's 30-day threat rate before connecting.
+When an operator opts in (`VAULT_ATTEST=1` + a funded hot wallet), scan verdicts can be attested on-chain via [EAS](https://attest.sh) on Base. Each MCP server then accumulates a public, append-only reputation score any agent can query before connecting. Off by default — no chain dependency for using the proxy.
+
+> A continuous attestation feed and public reputation registry are planned for **v0.3**. The proxy supports opt-in attestation today for operators who want it; the always-on hosted attester ships alongside v0.3 once we have real install traffic to back the numbers.
 
 ---
 
@@ -396,7 +398,7 @@ VAULT_MANIFEST_CHECK=on       # on | off | strict
 # Audit log
 VAULT_AUDIT_LOG=/var/log/vault-mcp.jsonl
 
-# On-chain attestation (Base)
+# On-chain attestation (opt-in, off by default — full hosted feed lands in v0.3)
 VAULT_ATTEST=1
 VAULT_ATTESTER_PRIVATE_KEY=0x...  # fund with ~0.05 ETH on Base
 VAULT_EAS_ADDRESS=0x4200000000000000000000000000000000000021

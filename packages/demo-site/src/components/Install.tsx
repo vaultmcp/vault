@@ -13,7 +13,7 @@ npx @aimcpvault/mcp-proxy --transport http --upstream https://mcp.example.com/v1
           </pre>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-2 text-xs uppercase tracking-widish text-dim">
-          <span>built on base · eas attestations · open source · byo llm key</span>
+          <span>open source · byo llm key · ollama supported · local-first</span>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-dim">
           <a className="hover:text-accent" href="https://github.com/" target="_blank" rel="noreferrer">

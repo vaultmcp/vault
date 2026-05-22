@@ -1,8 +1,6 @@
 import { Hero } from '@/components/Hero';
 import { WhyVault } from '@/components/WhyVault';
 import { WhatWePublish } from '@/components/WhatWePublish';
-import { BuildOnVault } from '@/components/BuildOnVault';
-import { CounterStrip } from '@/components/CounterStrip';
 import { ScanDemo } from '@/components/ScanDemo';
 import { ThreatFeed } from '@/components/ThreatFeed';
 import { Leaderboard } from '@/components/Leaderboard';
@@ -19,8 +17,6 @@ export default function Page() {
       <Hero />
       <WhyVault />
       <WhatWePublish />
-      <BuildOnVault />
-      <CounterStrip />
       <ScanDemo />
       <ThreatFeed collectorUrl={collectorUrl} />
       <Leaderboard />

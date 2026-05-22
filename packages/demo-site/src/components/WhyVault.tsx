@@ -4,8 +4,8 @@ const blocks = [
     body: 'Other tools scan LLM outputs. Vault scans MCP — the layer every modern agent runs through. It sits between your agent and any MCP server, intercepting every tool response before the agent reads it.',
   },
   {
-    headline: 'Reputation is a queryable primitive',
-    body: 'Every catch becomes an attestation on Base via EAS. Every MCP server accumulates a public reputation score that any agent, marketplace, or wallet can query before deciding to trust it.',
+    headline: 'LLM-grade detection at MCP scale',
+    body: 'L0 deterministic decoding + L1 heuristics + L2 embeddings cost-gate the LLM judge so detection stays affordable per request. Use Anthropic, OpenAI, or run fully offline with Ollama.',
   },
   {
     headline: 'Our eval is public',
