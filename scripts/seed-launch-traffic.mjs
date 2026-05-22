@@ -14,7 +14,8 @@
  *  - Drives 20 real tools/call `read_file` requests through the proxy with random
  *    10–30s spacing (total ~5–10 min). The proxy genuinely scans each response,
  *    produces a real verdict, and POSTs the telemetry batch to the collector
- *    at VAULT_TELEMETRY_URL=http://98.80.190.10/ingest. No direct /ingest writes.
+ *    at the URL given by the `VAULT_TELEMETRY_URL` environment variable. No direct
+ *    /ingest writes — every event in the feed corresponds to a real proxy verdict.
  *
  * Discipline:
  *  - Corpus payloads only. Holdout reads are forbidden (see POSTMORTEM-2026-05-20).
@@ -22,7 +23,8 @@
  *    scan verdict the proxy produced from a real tool response.
  *
  * Usage:
- *   node scripts/seed-launch-traffic.mjs
+ *   VAULT_TELEMETRY_URL=https://your-collector.example/ingest \
+ *     node scripts/seed-launch-traffic.mjs
  *
  * Expected runtime: ~6-10 min. Tail stderr to watch verdicts as they fire.
  */
@@ -45,7 +47,11 @@ const CORPUS_PATH = path.join(REPO_ROOT, 'packages/corpus/injection-patterns.jso
 const SEED_DIR = realpathSync.native?.(os.tmpdir())
   ? path.join(realpathSync.native(os.tmpdir()), 'vault-seed-target')
   : path.join(os.homedir(), '.vault-seed-target');
-const COLLECTOR_INGEST = 'http://98.80.190.10/ingest';
+const COLLECTOR_INGEST = process.env.VAULT_TELEMETRY_URL;
+if (!COLLECTOR_INGEST) {
+  console.error('[seed] error: VAULT_TELEMETRY_URL is required (e.g. https://collector.example/ingest)');
+  process.exit(2);
+}
 
 const BENIGN_PAYLOADS = [
   { id: 'benign-weather', text: 'The current temperature in San Francisco is 64°F with partly cloudy skies. Humidity is 72% and wind speed is 12 mph from the southwest. UV index is 3 (moderate).' },
@@ -54,7 +60,7 @@ const BENIGN_PAYLOADS = [
   { id: 'benign-commit-log', text: 'commit 7045d7a — chore: bump version to 0.2.0-rc.1 for release. Author: vault. Date: 2026-05-21 23:21 PT.' },
   { id: 'benign-db-result', text: 'Query returned 14 rows in 82 ms. Columns: user_id (int), email (text), created_at (timestamp). First row: 1, alice@example.com, 2026-05-01T10:00:00Z.' },
   { id: 'benign-pkg-info', text: 'Package @aimcpvault/mcp-proxy@0.2.0-rc.1: MCP prompt-injection scanning proxy. License MIT. 12 files. Unpacked size 511.6 kB.' },
-  { id: 'benign-cal-event', text: 'Upcoming events on your calendar: 11:00 — standup (zoom), 14:00 — design review with @yv, 17:30 — gym. No conflicts detected.' },
+  { id: 'benign-cal-event', text: 'Upcoming events on your calendar: 11:00 — standup (zoom), 14:00 — design review, 17:30 — gym. No conflicts detected.' },
   { id: 'benign-readme', text: 'README updated to reflect 0.2.0-rc.1 release. New sections: Ollama operation, on-chain reputation inspector, local scan history (opt-in). Tests passing 415/415.' },
 ];
 

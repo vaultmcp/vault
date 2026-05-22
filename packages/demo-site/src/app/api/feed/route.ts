@@ -1,21 +1,29 @@
 /// Server-side proxy to the collector's /feed endpoint. Resolves three problems the browser
 /// hit when fetching the collector directly:
-///   1. mixed-content blocking (https://vaultmcp.io → http://collector)
+///   1. mixed-content blocking (https://site → http://collector)
 ///   2. CORS Allow-Origin mismatch on the nginx in front of the collector
 ///   3. exposing the collector hostname to client bundles
 ///
 /// The Next.js node runtime fetches the upstream server-to-server, which is not subject to
-/// the browser's mixed-content policy. On upstream failure we return 200 with `events: []`
-/// so the ThreatFeed component renders its empty state cleanly instead of throwing.
+/// the browser's mixed-content policy. The upstream URL MUST be provided via the
+/// `COLLECTOR_URL` environment variable — there is no default. If unset, this route
+/// returns 503 with an empty events array so the ThreatFeed component renders its empty
+/// state cleanly instead of pointing at any specific host.
 
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const COLLECTOR = process.env.COLLECTOR_URL ?? 'http://98.80.190.10';
+const COLLECTOR = process.env.COLLECTOR_URL ?? '';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  if (!COLLECTOR) {
+    return NextResponse.json(
+      { events: [], note: 'COLLECTOR_URL not configured' },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
   const search = req.nextUrl.search;
   try {
     const resp = await fetch(`${COLLECTOR}/feed${search}`, {
