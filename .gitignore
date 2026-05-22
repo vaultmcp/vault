@@ -30,3 +30,11 @@ audit-*.jsonl
 CLAUDE.md
 NOTES_FOR_YV.md
 overnight-sprint.txt
+
+# Operator-private notes — see ~/vault-private-notes/ outside the repo
+# Untracked eval results stay local unless explicitly committed with provenance
+.private/
+.claude/
+*.private.md
+packages/eval/results/eval-*.json
+packages/eval/results/eval-*.md
