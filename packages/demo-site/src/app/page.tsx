@@ -1,3 +1,4 @@
+import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { WhyVault } from '@/components/WhyVault';
 import { WhatWePublish } from '@/components/WhatWePublish';
@@ -14,13 +15,16 @@ export default function Page() {
   // got blocked by both. See packages/demo-site/src/app/api/feed/route.ts.
   const collectorUrl = '/api';
   return (
-    <main>
-      <Hero />
-      <WhyVault />
-      <WhatWePublish />
-      <ScanDemo />
-      <ThreatFeed collectorUrl={collectorUrl} />
-      <Install />
-    </main>
+    <>
+      <Header />
+      <main>
+        <Hero />
+        <WhyVault />
+        <WhatWePublish />
+        <ScanDemo />
+        <ThreatFeed collectorUrl={collectorUrl} />
+        <Install />
+      </main>
+    </>
   );
 }
