@@ -8,9 +8,11 @@ import { Install } from '@/components/Install';
 export const revalidate = 60;
 
 export default function Page() {
-  // In production this would point at the deployed collector. For local dev it points at
-  // the proxy /api/feed which forwards to the configured collector URL.
-  const collectorUrl = process.env.NEXT_PUBLIC_COLLECTOR_URL ?? '/api';
+  // Always same-origin. The Next.js /api/feed route is the canonical client-facing path —
+  // it proxies to the collector server-side, dodging mixed-content + CORS. The previous
+  // NEXT_PUBLIC_COLLECTOR_URL env var pointed the browser directly at the collector and
+  // got blocked by both. See packages/demo-site/src/app/api/feed/route.ts.
+  const collectorUrl = '/api';
   return (
     <main>
       <Hero />
