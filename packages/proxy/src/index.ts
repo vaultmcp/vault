@@ -3,6 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startProxy } from './transports/stdio.js';
 import { startHttpProxy } from './transports/http.js';
+import { runDemo } from './cli/demo.js';
+import { runHistoryCli } from './cli/history.js';
+import { runDashboardCli } from './cli/dashboard.js';
+import { runInspectCli } from './cli/inspect.js';
 
 function readVersion(): string {
   try {
@@ -26,8 +30,12 @@ function readVersion(): string {
 const HELP = `vault mcp-proxy — scans MCP tool responses for prompt injection
 
 Usage
+  npx @aimcpvault/mcp-proxy demo                                         # interactive demo (30s first-run experience)
   npx @aimcpvault/mcp-proxy -- <command> [args...]                      # stdio (wrap a local MCP server)
   npx @aimcpvault/mcp-proxy --transport http --upstream <url> [--port]  # http (proxy a remote MCP server)
+  npx @aimcpvault/mcp-proxy history [flags]                              # show local scan history (requires VAULT_PERSIST=1)
+  npx @aimcpvault/mcp-proxy dashboard [flags]                            # localhost dashboard for scan history
+  npx @aimcpvault/mcp-proxy inspect [flags]                              # on-chain reputation for your Claude Desktop MCP servers
 
 Examples
   npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /tmp
@@ -44,13 +52,14 @@ Flags
 Detection (env)
   VAULT_MODE                 block (default) | warn | log
   VAULT_LAYER2_THRESHOLD     cosine distance cutoff for L2 (default 0.35)
-  VAULT_LAYER3_PROVIDER      anthropic | openai | custom         (default: auto-detect from key)
+  VAULT_LAYER3_PROVIDER      anthropic | openai | ollama | custom  (default: auto-detect from key)
   VAULT_LAYER3_MODEL         model id override
-  VAULT_LAYER3_BASE_URL      OpenAI-compatible endpoint (custom)
-  VAULT_LAYER3_TIMEOUT_MS    judge call hard timeout (default 5000)
+  VAULT_LAYER3_BASE_URL      base URL override (ollama or custom endpoint)
+  VAULT_LAYER3_TIMEOUT_MS    judge call hard timeout (default 15000)
   VAULT_L3_FP_SAFE           1 = demote suspicious→clean when L3 unavailable (old behaviour)
   ANTHROPIC_API_KEY          BYO key for Layer 3 (Anthropic)  ← strongly recommended
   OPENAI_API_KEY             BYO key for Layer 3 (OpenAI / compat)
+  OLLAMA_HOST                Ollama base URL (default: http://localhost:11434); set to enable offline L3
 
 Capability firewall (env, default off)
   VAULT_CAPABILITY                 1 to enable taint-tracking + gate
@@ -73,6 +82,11 @@ Telemetry (env, default on when URL configured)
 
 Audit log (env, default off)
   VAULT_AUDIT_LOG                  path to append-only JSONL of every decision
+
+Local scan history (env, default off — opt in for visibility)
+  VAULT_PERSIST                    1 to record every scan to ~/.vault/scans.db
+  VAULT_PERSIST_PATH               override DB path (default ~/.vault/scans.db)
+  VAULT_RETENTION_DAYS             rolling retention (default 30, purged on open)
 
 On-chain attestation (env, default off)
   VAULT_ATTEST                     1 to enable EAS attestations on Base
@@ -150,6 +164,34 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function main(): void {
   const argv = process.argv.slice(2);
+
+  // demo subcommand — handle before generic flag parsing
+  if (argv[0] === 'demo') {
+    runDemo().then(() => process.exit(0)).catch((err) => {
+      process.stderr.write(`vault demo: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (argv[0] === 'history') {
+    process.exit(runHistoryCli(argv.slice(1)));
+  }
+
+  if (argv[0] === 'dashboard') {
+    const code = runDashboardCli(argv.slice(1));
+    if (code !== 0) process.exit(code);
+    return; // dashboard keeps server alive
+  }
+
+  if (argv[0] === 'inspect') {
+    runInspectCli(argv.slice(1)).then((code) => process.exit(code)).catch((err) => {
+      process.stderr.write(`vault inspect: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
+    return;
+  }
+
   let parsed: ParsedArgs;
   try {
     parsed = parseArgs(argv);

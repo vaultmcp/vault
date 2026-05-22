@@ -10,6 +10,7 @@ import {
 import { createClientFromEnv } from '../src/detection/clients/factory.js';
 import { AnthropicJudge } from '../src/detection/clients/anthropic.js';
 import { OpenAICompatibleJudge } from '../src/detection/clients/openai-compatible.js';
+import { OllamaJudge } from '../src/detection/clients/ollama-client.js';
 import type {
   JudgeClient,
   JudgeContext,
@@ -133,6 +134,7 @@ describe('layer3 factory', () => {
     saved = {
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      OLLAMA_HOST: process.env.OLLAMA_HOST,
       VAULT_LAYER3_PROVIDER: process.env.VAULT_LAYER3_PROVIDER,
       VAULT_LAYER3_MODEL: process.env.VAULT_LAYER3_MODEL,
       VAULT_LAYER3_BASE_URL: process.env.VAULT_LAYER3_BASE_URL,
@@ -191,5 +193,36 @@ describe('layer3 factory', () => {
     process.env.VAULT_LAYER3_MODEL = 'claude-opus-4-7';
     const c = createClientFromEnv();
     expect(c?.modelName).toBe('claude-opus-4-7');
+  });
+
+  it('builds an OllamaJudge from OLLAMA_HOST', () => {
+    process.env.OLLAMA_HOST = 'http://localhost:11434';
+    const c = createClientFromEnv();
+    expect(c).toBeInstanceOf(OllamaJudge);
+    expect(c?.providerName).toBe('ollama');
+    expect(c?.modelName).toBe('llama3.2:3b');
+  });
+
+  it('builds an OllamaJudge from VAULT_LAYER3_PROVIDER=ollama without OLLAMA_HOST', () => {
+    process.env.VAULT_LAYER3_PROVIDER = 'ollama';
+    const c = createClientFromEnv();
+    expect(c).toBeInstanceOf(OllamaJudge);
+    expect(c?.providerName).toBe('ollama');
+  });
+
+  it('respects VAULT_LAYER3_MODEL and VAULT_LAYER3_BASE_URL for ollama', () => {
+    process.env.VAULT_LAYER3_PROVIDER = 'ollama';
+    process.env.VAULT_LAYER3_MODEL = 'mistral:7b';
+    process.env.VAULT_LAYER3_BASE_URL = 'http://gpu-box:11434';
+    const c = createClientFromEnv();
+    expect(c).toBeInstanceOf(OllamaJudge);
+    expect(c?.modelName).toBe('mistral:7b');
+  });
+
+  it('prefers ANTHROPIC over OLLAMA_HOST when explicit provider not set', () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
+    process.env.OLLAMA_HOST = 'http://localhost:11434';
+    const c = createClientFromEnv();
+    expect(c).toBeInstanceOf(AnthropicJudge);
   });
 });

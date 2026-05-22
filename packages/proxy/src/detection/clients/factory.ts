@@ -1,10 +1,13 @@
 import { AnthropicJudge } from './anthropic.js';
 import { OpenAICompatibleJudge } from './openai-compatible.js';
+import { OllamaJudge } from './ollama-client.js';
 import type { JudgeClient } from './types.js';
 
 const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DEFAULT_OPENAI_BASE = 'https://api.openai.com/v1';
+const DEFAULT_OLLAMA_MODEL = 'llama3.2:3b';
+const DEFAULT_OLLAMA_BASE = 'http://localhost:11434';
 
 export function createClientFromEnv(): JudgeClient | null {
   const provider = process.env.VAULT_LAYER3_PROVIDER?.toLowerCase();
@@ -36,6 +39,13 @@ export function createClientFromEnv(): JudgeClient | null {
       model: explicitModel,
       baseUrl: explicitBaseUrl,
       providerName: 'custom',
+    });
+  }
+
+  if (provider === 'ollama' || (!provider && process.env.OLLAMA_HOST)) {
+    return new OllamaJudge({
+      model: explicitModel ?? DEFAULT_OLLAMA_MODEL,
+      baseUrl: explicitBaseUrl ?? process.env.OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE,
     });
   }
 

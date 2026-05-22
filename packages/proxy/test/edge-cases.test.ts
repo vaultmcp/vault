@@ -356,7 +356,7 @@ describe('edge cases — 500 KB response triggers streaming pipeline', () => {
     const proxy = spawnProxy({ fixturePath });
 
     proxy.send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
-    await proxy.next(5000);
+    await proxy.next(15000);
 
     const start = performance.now();
     proxy.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 't', arguments: {} } });
@@ -482,7 +482,7 @@ describe('edge cases — no ANTHROPIC_API_KEY', () => {
       extraEnv: { ANTHROPIC_API_KEY: undefined, OPENAI_API_KEY: undefined },
     });
     proxy.send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
-    await proxy.next(5000);
+    await proxy.next(15000);
 
     proxy.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 't', arguments: {} } });
     const r = await proxy.next(15000);
@@ -528,7 +528,7 @@ describe('edge cases — attestation enabled but RPC unreachable', () => {
       },
     });
     proxy.send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
-    await proxy.next(5000);
+    await proxy.next(15000);
 
     const start = performance.now();
     proxy.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 't', arguments: {} } });

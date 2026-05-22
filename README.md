@@ -8,12 +8,114 @@ Vault is a production prompt-injection firewall for MCP. It intercepts every too
 
 ## Requirements
 
-Vault requires an LLM API key for production use. We support:
+Vault requires an LLM for Layer 3 in production. Three options:
 
 - **Anthropic** (`claude-haiku-4-5-20251001`, recommended) — set `ANTHROPIC_API_KEY`
-- **OpenAI-compatible endpoints** (`gpt-4o-mini`, or self-hosted via vLLM/llama.cpp) — set `OPENAI_API_KEY`
+- **OpenAI-compatible** (`gpt-4o-mini`, or self-hosted via vLLM/llama.cpp) — set `OPENAI_API_KEY`
+- **Ollama** (local, air-gapped) — set `OLLAMA_HOST=http://localhost:11434`
 
-Without an API key, Vault runs in offline mode for development and CI environments. Offline mode has documented limitations on protocol-encoded data — see [LIMITATIONS §11](packages/LIMITATIONS.md).
+Without any of the above, Vault runs in offline mode (L1+L2 only). Offline mode has documented limitations — see [LIMITATIONS §11](packages/LIMITATIONS.md).
+
+### Offline operation with Ollama
+
+Ollama lets you run L3 locally with no cloud dependency — useful for air-gapped environments, development without an API key, and cost-sensitive pipelines.
+
+```bash
+# 1. Install Ollama and pull a model (one-time)
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama3.2:3b
+
+# 2. Run Vault with Ollama as the L3 backend
+export OLLAMA_HOST=http://localhost:11434
+npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
+```
+
+To use a different model or a remote Ollama instance:
+
+```bash
+export VAULT_LAYER3_PROVIDER=ollama
+export VAULT_LAYER3_MODEL=mistral:7b
+export VAULT_LAYER3_BASE_URL=http://gpu-box:11434
+```
+
+**Caveats:**
+- Measured TPR numbers in this README are for Anthropic Haiku. Local 3B models vary; run the eval harness before relying on them in production. Anecdotally, `llama3.2:3b` has missed subtle role-hijack and multi-turn-setup attacks in smoke tests where Haiku catches them.
+- Reachability is verified on the first scan, not at startup. If Ollama isn't running, Vault logs `vault: layer-3 failed (...)` per request and falls back to L1+L2.
+- **Latency:** the default L3 timeout is 15s, sized to absorb the cold-start latency of local 3B models on CPU. If you're running on slower hardware or larger models, increase it further via `VAULT_LAYER3_TIMEOUT_MS=30000`. The first scan after Ollama loads the model can take much longer than steady-state — subsequent calls typically complete in 1–2s.
+- **Security:** the default URL is `http://localhost:11434`. If you set `VAULT_LAYER3_BASE_URL=http://0.0.0.0:11434` or point to a remote host, tool response content (which may include sensitive data) is sent over the network to that host. Only point to a trusted, local-network Ollama instance.
+
+---
+
+## On-chain reputation inspector
+
+`vault inspect` reads your Claude Desktop MCP config and reports the on-chain reputation Vault has accumulated for each server you have configured.
+
+```bash
+npx @aimcpvault/mcp-proxy inspect
+# vault inspect (3 MCP servers)
+#   config:   /Users/you/Library/Application Support/Claude/claude_desktop_config.json
+#   network:  Sepolia (testnet)
+#   contract: 0x3A977E4D8BA43367cc41BB4695feFF4615fec189
+#
+#   TRUSTED     filesystem [stdio:npx:@modelcontextprotocol/server-filesystem]
+#               score=0.980 scans=412 blocks=2 maliciousRate=0.5%
+#   NEW         git        [stdio:uvx:mcp-server-git]
+#               score=1.000 scans=0 blocks=0 maliciousRate=0.0%
+#   UNTRUSTED   sketchy    [stdio:npx:some-untrusted-pkg]
+#               score=0.400 scans=83 blocks=14 maliciousRate=16.9%
+```
+
+**Trust thresholds (transparent, no magic numbers):**
+- `TRUSTED`   score ≥ 0.95 AND totalScans ≥ 100
+- `UNTRUSTED` maliciousRate ≥ 0.10
+- `CAUTION`   totalScans ≥ 10 AND maliciousRate ≥ 0.01
+- `NEW`       totalScans < 10
+
+**Flags:**
+- `--config <path>` override the Claude Desktop config path
+- `--rpc <url>` and `--contract <addr>` point at a different network/deployment
+- `--json` one JSON record per server (suitable for CI / scripts)
+- `--strict` exit code 1 if any server is UNTRUSTED — useful in CI checks
+
+The reputation contract today is on **Base Sepolia (testnet)**. Mainnet deployment is pending; the inspector will continue to default to Sepolia until mainnet is live, with a yellow warning printed on each run.
+
+---
+
+## Local scan history (opt-in)
+
+Vault can persist every scan to a local SQLite database (`~/.vault/scans.db`) so you can review what was blocked, search by tool/server/verdict, and view a local dashboard.
+
+**Off by default.** Enable with `VAULT_PERSIST=1`:
+
+```bash
+VAULT_PERSIST=1 npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
+# vault: persisting scan history to /Users/you/.vault/scans.db (set VAULT_PERSIST=0 to disable)
+```
+
+**Query from the CLI:**
+
+```bash
+npx @aimcpvault/mcp-proxy history                          # last 50
+npx @aimcpvault/mcp-proxy history --verdict malicious      # only blocks
+npx @aimcpvault/mcp-proxy history --since 7d --json        # last week, JSON
+npx @aimcpvault/mcp-proxy history --server stdio:npx:@modelcontextprotocol/server-filesystem
+```
+
+**Browse the dashboard:**
+
+```bash
+npx @aimcpvault/mcp-proxy dashboard
+# vault dashboard: http://127.0.0.1:9876
+```
+
+Dark-themed single-page dashboard with verdict cards, per-day stacked bars (30 days), top tools, and a recent-scans table. Auto-refreshes every 5s (configurable via `--refresh <sec>`).
+
+**Privacy guarantees:**
+- Off by default — no data is written unless `VAULT_PERSIST=1` is set.
+- All data stays local. The dashboard and history reader both serve `~/.vault/scans.db` directly; nothing is uploaded.
+- Content previews are passed through a regex redactor before storage (API keys, GitHub/AWS tokens, JWTs, emails, SSN-shaped strings, credit-card-shaped numbers, generic `password:` / `token:` headers). This is a best-effort filter; if you need stronger guarantees, leave persistence off.
+- 30-day rolling retention. Override with `VAULT_RETENTION_DAYS=<n>` (set to `0` to disable purging).
+- Override the DB path with `VAULT_PERSIST_PATH=/path/to/scans.db`.
 
 ---
 

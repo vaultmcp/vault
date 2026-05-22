@@ -3,6 +3,7 @@ import type { ManifestConfig, ManifestMode } from './manifest/index.js';
 import type { TelemetryConfig } from './telemetry/index.js';
 import type { AuditConfig } from './audit/index.js';
 import type { AttestationConfig } from './attestation/index.js';
+import { loadScanStoreConfig, type ScanStoreConfig } from './persistence/index.js';
 import type { Hex } from 'viem';
 
 export type VaultMode = 'block' | 'warn' | 'log';
@@ -14,6 +15,7 @@ export interface VaultConfig {
   telemetry: TelemetryConfig;
   audit: AuditConfig;
   attestation: AttestationConfig;
+  persistence: ScanStoreConfig;
 }
 
 export function loadConfig(): VaultConfig {
@@ -26,6 +28,7 @@ export function loadConfig(): VaultConfig {
     telemetry: loadTelemetryConfig(),
     audit: loadAuditConfig(),
     attestation: loadAttestationConfig(),
+    persistence: loadScanStoreConfig(),
   };
 }
 

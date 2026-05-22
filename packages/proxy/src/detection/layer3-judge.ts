@@ -22,7 +22,7 @@ import {
 import type { DetectionResult, Verdict } from './types.js';
 import { emitDegradedWarningAtStartup } from './degraded-state.js';
 
-const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_TIMEOUT_MS = 15000;
 
 interface ClientCache {
   client: JudgeClient | null;

@@ -8,6 +8,6 @@
     "beta:status": "node scripts/beta-status.mjs"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["sharp", "esbuild", "protobufjs"]
+    "onlyBuiltDependencies": ["sharp", "esbuild", "protobufjs", "better-sqlite3"]
   }
 }

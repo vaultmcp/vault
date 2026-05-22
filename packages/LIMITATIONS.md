@@ -222,7 +222,16 @@ With L3 enabled, all 40% of protocol-data false positives correctly resolve to
 clean, and TPR rises to 100% on the structural eval (80-entry holdout-v2,
 2026-05-21).
 
-Offline mode is supported for:
+**L3 options** — any of the following enables L3:
+- `ANTHROPIC_API_KEY` — Anthropic Haiku (recommended, ~$0.04/hr at 100 req/hr)
+- `OPENAI_API_KEY` — OpenAI gpt-4o-mini or compatible
+- `OLLAMA_HOST=http://localhost:11434` — local Ollama instance (air-gapped deployments)
+
+Ollama support (`VAULT_LAYER3_PROVIDER=ollama`) uses `llama3.2:3b` by default.
+Override with `VAULT_LAYER3_MODEL` and `VAULT_LAYER3_BASE_URL`. Note: local model
+quality varies; TPR with a quantized 3B model is not independently measured.
+
+Offline mode (L1+L2 only) is supported for:
 - Development environments and CI testing
 - Local agents with natural-language tool responses only
 

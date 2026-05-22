@@ -29,6 +29,7 @@ import {
   type AttestationClient,
   type ScanReporter,
 } from '../attestation/index.js';
+import { createScanStore, type ScanStore } from '../persistence/index.js';
 import {
   buildCapabilityBlockedResponse,
   inspectToolCallResponse,
@@ -121,6 +122,13 @@ export function startProxy(cmd: string, args: string[]): void {
     client: attestClient,
     sampleRateL1L2: config.attestation.sampleRateL1L2,
   });
+  const scanStore: ScanStore = createScanStore(config.persistence);
+
+  if (scanStore.enabled) {
+    process.stderr.write(
+      `vault: persisting scan history to ${scanStore.dbPath} (set VAULT_PERSIST=0 to disable)\n`,
+    );
+  }
 
   if (config.telemetry.bannerOnStart) {
     process.stderr.write(
@@ -306,6 +314,29 @@ export function startProxy(cmd: string, args: string[]): void {
             layer: outcome.layer ?? null,
           });
         }
+        if (scanStore.enabled) {
+          const rawText = msg.result.content
+            .map((c) => (typeof c.text === 'string' ? c.text : ''))
+            .join('\n');
+          try {
+            scanStore.insert({
+              serverKey: serverIdentifier,
+              transport: 'stdio',
+              toolName,
+              verdict: outcome.verdict,
+              layer: outcome.layer ?? null,
+              confidence: outcome.result?.confidence ?? 0,
+              patterns: outcome.result?.detectedPatterns ?? [],
+              contentHash: outcome.contentHash,
+              rawText,
+              reasoning: outcome.result?.reasoning ?? null,
+              mode: config.mode,
+              mutated: outcome.mutated,
+            });
+          } catch (err) {
+            process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
+          }
+        }
         if (config.capability.enabled) addResponseToTaint(msg, toolName, taint);
       }
 
@@ -318,6 +349,7 @@ export function startProxy(cmd: string, args: string[]): void {
       void telemetry.shutdown();
       void audit.shutdown();
       void attestClient.shutdown();
+      try { scanStore.close(); } catch { /* ignore */ }
       if (!child.killed) child.kill(sig);
     });
   }

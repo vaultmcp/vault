@@ -28,6 +28,7 @@ import {
   type AttestationClient,
   type ScanReporter,
 } from '../attestation/index.js';
+import { createScanStore, type ScanStore } from '../persistence/index.js';
 import {
   buildCapabilityBlockedResponse,
   inspectToolCallResponse,
@@ -105,6 +106,13 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
     client: attestClient,
     sampleRateL1L2: config.attestation.sampleRateL1L2,
   });
+  const scanStore: ScanStore = createScanStore(config.persistence);
+
+  if (scanStore.enabled) {
+    process.stderr.write(
+      `vault: persisting scan history to ${scanStore.dbPath} (set VAULT_PERSIST=0 to disable)\n`,
+    );
+  }
 
   if (config.telemetry.bannerOnStart) {
     process.stderr.write(
@@ -263,6 +271,29 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
                   layer: outcome.layer ?? null,
                 });
               }
+              if (scanStore.enabled) {
+                const rawText = scannedMsg.result.content
+                  .map((c) => (typeof c.text === 'string' ? c.text : ''))
+                  .join('\n');
+                try {
+                  scanStore.insert({
+                    serverKey: upstreamUrl,
+                    transport: 'sse',
+                    toolName: scannedTool,
+                    verdict: outcome.verdict,
+                    layer: outcome.layer ?? null,
+                    confidence: outcome.result?.confidence ?? 0,
+                    patterns: outcome.result?.detectedPatterns ?? [],
+                    contentHash: outcome.contentHash,
+                    rawText,
+                    reasoning: outcome.result?.reasoning ?? null,
+                    mode: config.mode,
+                    mutated: outcome.mutated,
+                  });
+                } catch (err) {
+                  process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
+                }
+              }
               if (config.capability.enabled) {
                 for (const item of scannedMsg.result.content) {
                   if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
@@ -386,6 +417,29 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
           layer: outcome.layer ?? null,
         });
       }
+      if (scanStore.enabled) {
+        const rawText = respMsg.result.content
+          .map((c) => (typeof c.text === 'string' ? c.text : ''))
+          .join('\n');
+        try {
+          scanStore.insert({
+            serverKey: upstreamUrl,
+            transport: 'http',
+            toolName,
+            verdict: outcome.verdict,
+            layer: outcome.layer ?? null,
+            confidence: outcome.result?.confidence ?? 0,
+            patterns: outcome.result?.detectedPatterns ?? [],
+            contentHash: outcome.contentHash,
+            rawText,
+            reasoning: outcome.result?.reasoning ?? null,
+            mode: config.mode,
+            mutated: outcome.mutated,
+          });
+        } catch (err) {
+          process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
+        }
+      }
       if (config.capability.enabled) {
         for (const item of respMsg.result.content) {
           if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
@@ -414,6 +468,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
       void telemetry.shutdown();
       void audit.shutdown();
       void attestClient.shutdown();
+      try { scanStore.close(); } catch { /* ignore */ }
       server.close(() => process.exit(0));
     });
   }
