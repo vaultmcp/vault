@@ -20,16 +20,16 @@ VaultMCP sits between your AI agent and any MCP server. Every tools/call respons
 
 ## Install
 
-    npx @aimcpvault/mcp-proxy@beta -- <your MCP server command>
+    npx @aimcpvault/mcp-proxy@next -- <your MCP server command>
 
 Example wrapping the filesystem server:
 
     export ANTHROPIC_API_KEY=sk-ant-...
-    npx @aimcpvault/mcp-proxy@beta -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
+    npx @aimcpvault/mcp-proxy@next -- npx -y @modelcontextprotocol/server-filesystem /path/to/data
 
-## On-chain reputation
+## On-chain reputation (opt-in)
 
-Every scan verdict can be attested on Base via EAS. The proxy accumulates per-server reputation scores queryable by any agent or marketplace. Deployed on Base Sepolia; mainnet pending.
+Operators can opt in to on-chain attestation via VAULT_ATTEST=1 with a funded hot wallet. Verdicts are attested to Base via EAS; per-server reputation accumulates as more operators opt in. The contract is deployed on Base Sepolia; mainnet and an always-on hosted attester land with v0.3.
 
 ## Known limitations
 
@@ -47,4 +47,4 @@ Full limitations: https://github.com/vaultmcp/vault/blob/main/packages/LIMITATIO
 - npm: https://www.npmjs.com/package/@aimcpvault/mcp-proxy
 - Eval methodology and holdout manifests: packages/eval/
 - Postmortem (contamination incident, corrective actions): packages/POSTMORTEM-2026-05-20-contamination.md
-- Demo and live leaderboard: https://vaultmcp.io
+- Demo: https://vaultmcp.io

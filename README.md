@@ -314,27 +314,18 @@ Or wrap by hand:
 
 ### Check a server's reputation
 
-Before connecting to an MCP server, query its on-chain reputation. Three install paths — pick whichever fits:
+The `vault-check` binary ships inside the proxy package — no separate install needed:
 
 ```bash
-# (a) via npx (no install)
-npx @vaultmcp/check stdio:npx:@modelcontextprotocol/server-filesystem
-
-# (b) via Homebrew
-brew tap vaultmcp/tap && brew install vault-check
-
-# (c) via curl — standalone binary, no Node required
-curl -fsSL https://vaultmcp.io/install.sh | sh
-
-# Then:
-vault-check https://mcp.example.com/v1
-vault-check --all              # scores every server in your MCP config(s)
-vault-check --json | jq .      # machine-readable
+# already installed if you have @aimcpvault/mcp-proxy
+npx --package=@aimcpvault/mcp-proxy@next vault-check stdio:npx:@modelcontextprotocol/server-filesystem
+npx --package=@aimcpvault/mcp-proxy@next vault-check --all     # scores every server in your MCP config(s)
+npx --package=@aimcpvault/mcp-proxy@next vault-check --json | jq .
 ```
 
-If you've installed `@aimcpvault/mcp-proxy`, the proxy ships its own `vault-check` binary identical to the standalone — no need to install both.
+A standalone `vault-check` binary (Homebrew tap, curl-piped install script) is planned for **v0.3** once we ship signed releases on GitHub.
 
-Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer).
+Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer). The opt-in attestation path is documented above under "Optional: on-chain attestation"; a continuous public feed lands with v0.3.
 
 ### Add a reputation badge to your MCP server's README
 
