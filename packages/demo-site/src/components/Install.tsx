@@ -6,10 +6,10 @@ export function Install() {
         <div className="mt-6 rounded-md border border-line bg-panel p-6 font-mono text-sm">
           <pre className="overflow-x-auto whitespace-pre text-ink">
 {`# wrap any stdio MCP server
-npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /path
+npx @aimcpvault/mcp-proxy@next -- npx -y @modelcontextprotocol/server-filesystem /path
 
 # or proxy a remote MCP server
-npx @aimcpvault/mcp-proxy --transport http --upstream https://mcp.example.com/v1 --port 8800`}
+npx @aimcpvault/mcp-proxy@next --transport http --upstream https://mcp.example.com/v1 --port 8800`}
           </pre>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-2 text-xs uppercase tracking-widish text-dim">

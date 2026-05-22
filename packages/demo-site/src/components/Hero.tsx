@@ -40,7 +40,7 @@ export function Hero() {
             <div className="text-dim">
               <span className="text-accent">$</span>{' '}
               <span className="text-ink">
-                npx @aimcpvault/mcp-proxy@beta{' '}
+                npx @aimcpvault/mcp-proxy@next{' '}
                 <span className="text-dim">--</span>{' '}
                 npx -y @modelcontextprotocol/server-filesystem /path
               </span>

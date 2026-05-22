@@ -3,7 +3,6 @@ import { WhyVault } from '@/components/WhyVault';
 import { WhatWePublish } from '@/components/WhatWePublish';
 import { ScanDemo } from '@/components/ScanDemo';
 import { ThreatFeed } from '@/components/ThreatFeed';
-import { Leaderboard } from '@/components/Leaderboard';
 import { Install } from '@/components/Install';
 
 export const revalidate = 60;
@@ -19,7 +18,6 @@ export default function Page() {
       <WhatWePublish />
       <ScanDemo />
       <ThreatFeed collectorUrl={collectorUrl} />
-      <Leaderboard />
       <Install />
     </main>
   );

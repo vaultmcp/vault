@@ -70,6 +70,12 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
           setError(null);
         }
       } catch (e) {
+        // Surface to devtools only — don't leak transport errors to visitors.
+        // Real fix tracked in NOTES_FOR_YV.md (mixed-content + CORS on the live collector).
+        if (typeof console !== 'undefined') {
+          // eslint-disable-next-line no-console
+          console.warn('[vault] threat feed fetch failed:', e instanceof Error ? e.message : String(e));
+        }
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       }
     }
@@ -89,7 +95,7 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
         <div className="flex items-baseline justify-between">
           <h2 className="text-xs uppercase tracking-widish text-dim">recent attacks blocked</h2>
           <span className="text-xs text-dim">
-            {error ? <span className="text-bad">collector offline ({error})</span> : `${events.length} events`}
+            {error || events.length === 0 ? 'no recent events' : `${events.length} events`}
           </span>
         </div>
         <div className="mt-6 overflow-hidden rounded-md border border-line">
@@ -103,10 +109,10 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
               </tr>
             </thead>
             <tbody>
-              {events.length === 0 && !error && (
+              {events.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-dim">
-                    waiting for events…
+                    no recent attacks to display
                   </td>
                 </tr>
               )}

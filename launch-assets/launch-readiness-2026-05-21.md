@@ -4,6 +4,36 @@ Outcome: sprint complete. Three feature lanes shipped behind opt-in flags, no de
 
 ---
 
+## Final published state (added end-of-overnight)
+
+**npm:**
+- `@aimcpvault/mcp-proxy@0.2.0-rc.1` published to `@next` tag
+- `dist.shasum`: `5f620408064fa0d44f009e5decc70a8c78b1bbc0`
+- `gitHead`: empty (pnpm publish quirk — tracked, v0.3 backlog item #7)
+- Full dist-tags: `{ latest: '0.1.0-beta.2', beta: '0.1.0-rc.1', next: '0.2.0-rc.1' }`
+
+**Git:**
+- Tag `v0.2.0-rc.1` → commit `7045d7a` on `origin/main` (`https://github.com/vaultmcp/vault`)
+- Three commits added: sprint (`83e5030`), docs refocus (`759f8f3`), version bump (`7045d7a`)
+- `archive/contaminated-90pct-2026-05-20` tag preserved at `c454f2d` (unchanged)
+- Repo still **private** at end of sprint — public flip pending yv's morning approval
+
+**Demo site (vaultmcp.io):**
+- ECS rollout COMPLETED at 2026-05-21 23:27 PT
+- Running task: image digest `sha256:371f7bdaeaf81e8f00bd62d0d4a6aeac033845fa2a3460dbf2a8066d1246a880` (linux/amd64 multi-arch build)
+- ECR `latest` tag points at the same digest
+- Live HTML verified: no "every catch becomes an attestation" (0 matches), "LLM-grade detection at MCP scale" present (2 matches), no BuildOnVault/CounterStrip references, hero "Stop prompt injection in MCP" intact, "95.5" present
+- One hiccup during rollout: initial docker build was arm64-only (Apple Silicon host); ECS failed with `CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`. Rebuilt with `docker buildx --platform linux/amd64`, second rollout succeeded in ~4 min.
+
+**Smoke test (fresh `/tmp` install of @next):**
+- `--help` lists `demo / history / dashboard / inspect` + new env vars; default `VAULT_LAYER3_TIMEOUT_MS=15000` ✓
+- `demo` runs 8/8 scans in degraded mode (no API key); 4 malicious / 3 suspicious / 1 clean
+- `inspect --config <sample>` parses 2 servers, live Sepolia call succeeds, NEW verdicts for both
+- `inspect --json` emits one NDJSON record per server
+- No install errors; two deprecation warnings (`prebuild-install`, `node-domexception`) are upstream transitives, not blockers
+
+---
+
 ## 1. Features shipped
 
 ### Day 1 — Ollama backend + `vault demo`
