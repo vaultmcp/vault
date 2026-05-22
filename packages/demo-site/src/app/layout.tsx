@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'VaultMCP — Stop prompt injection in MCP',
     description: '100% detection rate on 80-attack public eval (95.5%+ at 95% confidence). 0.0% FPR. One command to deploy.',
-    site: '@vaultmcpbase',
+    site: '@vaultmcp',
   },
 };
 

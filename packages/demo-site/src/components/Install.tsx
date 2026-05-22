@@ -16,14 +16,11 @@ npx @aimcpvault/mcp-proxy@next --transport http --upstream https://mcp.example.c
           <span>open source · byo llm key · ollama supported · local-first</span>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-dim">
-          <a className="hover:text-accent" href="https://github.com/" target="_blank" rel="noreferrer">
+          <a className="hover:text-accent" href="https://github.com/vaultmcp/vault" target="_blank" rel="noreferrer">
             github
           </a>
-          <a className="hover:text-accent" href="#" target="_blank" rel="noreferrer">
-            privacy
-          </a>
-          <a className="hover:text-accent" href="#" target="_blank" rel="noreferrer">
-            twitter
+          <a className="hover:text-accent" href="https://x.com/vaultmcp" target="_blank" rel="noreferrer">
+            x
           </a>
         </div>
       </div>

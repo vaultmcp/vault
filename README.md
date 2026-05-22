@@ -1,6 +1,6 @@
 # Vault — MCP Prompt Injection Firewall
 
-**Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **Twitter/X:** [@vaultmcpbase](https://x.com/vaultmcpbase)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
+**Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **X:** [@vaultmcp](https://x.com/vaultmcp)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
 
 Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through three layers of detection.
 
