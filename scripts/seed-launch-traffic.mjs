@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * One-time launch-day seeding script. Runs real scans through the proxy using public
- * corpus payloads. Documented in NOTES_FOR_YV.md.
+ * corpus payloads. Documented in OPERATOR_NOTES.md.
  *
  * What it does:
  *  - Picks 12 attack payloads from packages/corpus/injection-patterns.json (2 per category,
@@ -76,7 +76,7 @@ function pickAttackPayloads() {
   const picks = [];
   for (const [category, entries] of [...byCategory.entries()].sort()) {
     // Deterministic: take the first two from each category. No randomness in the picker —
-    // we want the seed to be reproducible if yv ever needs to re-run.
+    // we want the seed to be reproducible if the operator ever needs to re-run.
     picks.push({ id: entries[0].id, text: entries[0].text, category });
     picks.push({ id: entries[1].id, text: entries[1].text, category });
   }

@@ -71,7 +71,7 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
         }
       } catch (e) {
         // Surface to devtools only — don't leak transport errors to visitors.
-        // Real fix tracked in NOTES_FOR_YV.md (mixed-content + CORS on the live collector).
+        // Real fix tracked in OPERATOR_NOTES.md (mixed-content + CORS on the live collector).
         if (typeof console !== 'undefined') {
           // eslint-disable-next-line no-console
           console.warn('[vault] threat feed fetch failed:', e instanceof Error ? e.message : String(e));

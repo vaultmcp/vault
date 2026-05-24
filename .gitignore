@@ -28,7 +28,7 @@ audit-*.jsonl
 
 # Internal sprint / dev files — never commit these
 CLAUDE.md
-NOTES_FOR_YV.md
+OPERATOR_NOTES.md
 overnight-sprint.txt
 
 # Operator-private notes — see ~/vault-private-notes/ outside the repo
