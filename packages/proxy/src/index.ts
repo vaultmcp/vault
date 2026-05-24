@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startProxy } from './transports/stdio.js';
 import { startHttpProxy } from './transports/http.js';
+import { startScanHttp } from './transports/scan-http.js';
 import { runDemo } from './cli/demo.js';
 import { runHistoryCli } from './cli/history.js';
 import { runDashboardCli } from './cli/dashboard.js';
@@ -42,10 +43,11 @@ Examples
   npx @aimcpvault/mcp-proxy --transport http --upstream https://mcp.example.com/v1 --port 8800
 
 Flags
-  --transport <stdio|http>   default: stdio
-  --upstream <url>           required when --transport http
-  --port, --listen-port <n>  default: 8800 (http mode only)
-  --host <addr>              default: 127.0.0.1 (http mode only)
+  --transport <stdio|http|scan-http>  default: stdio
+  --upstream <url>                    required when --transport http
+  --port, --listen-port <n>           default: 8800 (http) / 9787 (scan-http)
+  --host <addr>                       default: 127.0.0.1
+  --server-url <url>                  logical server identifier for scan-http (default: scan-http:vault)
   --version, -v              print version
   --help, -h                 this help
 
@@ -102,10 +104,11 @@ Privacy: see PRIVACY.md. SHA-256 hashes only — raw content never leaves the pr
 `;
 
 interface ParsedArgs {
-  transport: 'stdio' | 'http';
+  transport: 'stdio' | 'http' | 'scan-http';
   upstream?: string;
   port?: number;
   host?: string;
+  serverUrl?: string;
   stdioTarget?: { cmd: string; args: string[] };
   showHelp: boolean;
   noArgs: boolean;
@@ -125,10 +128,11 @@ function parseArgs(argv: string[]): ParsedArgs {
   const flagArgs = sepIdx >= 0 ? argv.slice(0, sepIdx) : argv;
   const afterSep = sepIdx >= 0 ? argv.slice(sepIdx + 1) : [];
 
-  let transport: 'stdio' | 'http' = 'stdio';
+  let transport: 'stdio' | 'http' | 'scan-http' = 'stdio';
   let upstream: string | undefined;
   let port: number | undefined;
   let host: string | undefined;
+  let serverUrl: string | undefined;
 
   for (let i = 0; i < flagArgs.length; i++) {
     const a = flagArgs[i];
@@ -136,6 +140,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       const v = flagArgs[++i];
       if (v === 'http') transport = 'http';
       else if (v === 'stdio') transport = 'stdio';
+      else if (v === 'scan-http') transport = 'scan-http';
       else throw new Error(`unknown transport: ${v}`);
     } else if (a === '--upstream') {
       upstream = flagArgs[++i];
@@ -144,6 +149,8 @@ function parseArgs(argv: string[]): ParsedArgs {
       port = v ? Number.parseInt(v, 10) : undefined;
     } else if (a === '--host') {
       host = flagArgs[++i];
+    } else if (a === '--server-url') {
+      serverUrl = flagArgs[++i];
     } else if (a && a.startsWith('--')) {
       throw new Error(`unknown flag: ${a}`);
     }
@@ -152,6 +159,17 @@ function parseArgs(argv: string[]): ParsedArgs {
   if (transport === 'http') {
     if (!upstream) throw new Error('--transport http requires --upstream <url>');
     return { transport, upstream, port: port ?? 8800, host: host ?? '127.0.0.1', showHelp: false, noArgs: false };
+  }
+
+  if (transport === 'scan-http') {
+    return {
+      transport,
+      port: port ?? 9787,
+      host: host ?? '127.0.0.1',
+      serverUrl,
+      showHelp: false,
+      noArgs: false,
+    };
   }
 
   // stdio
@@ -208,6 +226,15 @@ function main(): void {
 
   if (parsed.transport === 'http') {
     startHttpProxy({ upstream: parsed.upstream!, listenPort: parsed.port!, listenHost: parsed.host });
+    return;
+  }
+
+  if (parsed.transport === 'scan-http') {
+    startScanHttp({
+      listenPort: parsed.port!,
+      listenHost: parsed.host,
+      defaultServerUrl: parsed.serverUrl,
+    });
     return;
   }
 
