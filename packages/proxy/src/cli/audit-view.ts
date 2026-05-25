@@ -291,4 +291,6 @@ function main(): void {
   process.stdout.write(render(rows, filter) + '\n');
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
