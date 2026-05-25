@@ -35,8 +35,8 @@ jobs:
       - name: typecheck — proxy + collector + eval + demo-site + contracts
         run: pnpm -r typecheck
 
-      - name: test — workspace
-        run: pnpm -r test
+      - name: test — workspace (contracts handled by foundry job)
+        run: pnpm -r --filter='!@vaultmcp/contracts' test
 
       - name: build — proxy + collector
         run: |
