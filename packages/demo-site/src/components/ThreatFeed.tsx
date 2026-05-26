@@ -91,14 +91,38 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
 
   return (
     <section className="border-b border-line">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="flex items-baseline justify-between">
+      <div className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-16">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-xs uppercase tracking-widish text-dim">recent attacks blocked</h2>
-          <span className="text-xs text-dim">
+          <span className="text-xs text-dim shrink-0">
             {error || events.length === 0 ? 'no recent events' : `${events.length} events`}
           </span>
         </div>
-        <div className="mt-6 overflow-hidden rounded-md border border-line">
+
+        {/* Mobile: card stack */}
+        <ul className="mt-6 divide-y divide-line rounded-md border border-line overflow-hidden md:hidden">
+          {events.length === 0 ? (
+            <li className="px-4 py-6 text-center text-xs text-dim">no recent attacks to display</li>
+          ) : (
+            events.map((e) => (
+              <li key={e.id} className="px-4 py-3 font-mono text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`${rowAccent(e)} font-medium`}>{label(e)}</span>
+                  <span className="shrink-0 text-dim">{timeAgo(e.ts, now)}</span>
+                </div>
+                <div className="mt-1 break-words text-ink">{detail(e)}</div>
+                {e.contentHash && (
+                  <div className="mt-1 text-dim">
+                    <code className="break-all">sha256: {e.contentHash.slice(0, 16)}…</code>
+                  </div>
+                )}
+              </li>
+            ))
+          )}
+        </ul>
+
+        {/* Desktop: table */}
+        <div className="mt-6 hidden overflow-hidden rounded-md border border-line md:block">
           <table className="w-full font-mono text-xs">
             <thead className="bg-panel text-dim">
               <tr>
