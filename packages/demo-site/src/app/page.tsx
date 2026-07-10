@@ -1,3 +1,4 @@
+import { AnnounceBar } from '@/components/AnnounceBar';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { WhyVault } from '@/components/WhyVault';
@@ -17,6 +18,7 @@ export default function Page() {
   const collectorUrl = '/api';
   return (
     <>
+      <AnnounceBar />
       <Header />
       <main>
         <Hero />
