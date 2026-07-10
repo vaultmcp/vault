@@ -56,6 +56,27 @@ The server is **zero-dependency** (Node builtins only) and mirrors
 `packages/rh-demo/src/web.ts`: it reads `index.html` once via `readFileSync` and
 serves the JSON from an in-memory store loaded from the seed at boot.
 
+## Query it from an agent (MCP)
+
+The registry is also an **MCP server**, so an agent can ask "is this trading server
+safe?" in-loop before trusting it — and you can wrap the registry itself with Vault:
+
+```bash
+pnpm --filter @vaultmcp/rh-registry mcp                       # NDJSON JSON-RPC over stdio
+npx @aimcpvault/mcp-proxy -- pnpm --filter @vaultmcp/rh-registry mcp
+```
+
+Tools exposed via `tools/list`:
+
+| Tool | Purpose |
+|---|---|
+| `check_mcp_server` | Look up a server by `id` or `endpoint`; returns a recommendation — `allow` (scanned, no findings), `caution` (flagged or unscanned), or `unknown` (not in the registry) — with the scan status and attestation state. |
+| `list_mcp_servers` | List servers, optionally filtered by `scanStatus`. |
+| `registry_summary` | Aggregate counts. |
+
+`check_mcp_server` returns `unknown` for anything not in the registry, so an agent's
+safe default is to treat unlisted servers as untrusted.
+
 ## Store API
 
 ```ts

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "serve": "tsx src/server.ts",
+    "mcp": "tsx src/mcp-server.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
