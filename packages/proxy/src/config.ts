@@ -1,4 +1,4 @@
-import type { CapabilityConfig, CapabilityMode } from './capability/index.js';
+import type { CapabilityConfig, CapabilityMode, TradePolicyConfig } from './capability/index.js';
 import type { ManifestConfig, ManifestMode } from './manifest/index.js';
 import type { TelemetryConfig } from './telemetry/index.js';
 import type { AuditConfig } from './audit/index.js';
@@ -11,6 +11,7 @@ export type VaultMode = 'block' | 'warn' | 'log';
 export interface VaultConfig {
   mode: VaultMode;
   capability: CapabilityConfig;
+  tradePolicy: TradePolicyConfig;
   manifest: ManifestConfig;
   telemetry: TelemetryConfig;
   audit: AuditConfig;
@@ -24,6 +25,7 @@ export function loadConfig(): VaultConfig {
   return {
     mode,
     capability: loadCapabilityConfig(),
+    tradePolicy: loadTradePolicyConfig(),
     manifest: loadManifestConfig(),
     telemetry: loadTelemetryConfig(),
     audit: loadAuditConfig(),
@@ -142,6 +144,89 @@ function loadCapabilityConfig(): CapabilityConfig {
   const windowSize = positiveInt(process.env.VAULT_TAINT_WINDOW_SIZE, 10);
 
   return { enabled, mode, extraPatterns, minOverlap, windowSize };
+}
+
+function compilePatterns(raw: string | undefined, defaults: RegExp[]): RegExp[] {
+  if (!raw) return defaults;
+  const out: RegExp[] = [];
+  for (const piece of raw.split(',')) {
+    const trimmed = piece.trim();
+    if (!trimmed) continue;
+    try {
+      out.push(new RegExp(trimmed, 'i'));
+    } catch {
+      process.stderr.write(`vault: invalid trade-policy pattern '${trimmed}', skipping\n`);
+    }
+  }
+  return out.length > 0 ? out : defaults;
+}
+
+function csvList(raw: string | undefined, defaults: string[]): string[] {
+  if (raw === undefined) return defaults;
+  const out = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return out.length > 0 ? out : defaults;
+}
+
+function loadTradePolicyConfig(): TradePolicyConfig {
+  const flag = process.env.VAULT_TRADE_GUARD?.toLowerCase();
+  const enabled = flag === '1' || flag === 'true' || flag === 'on';
+  const modeRaw = process.env.VAULT_TRADE_GUARD_MODE?.toLowerCase();
+  const mode: CapabilityMode = modeRaw === 'warn' ? 'warn' : 'block';
+
+  const recipientAllowlist = new Set(
+    (process.env.VAULT_TRADE_ALLOWLIST ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  const swapPatterns = compilePatterns(process.env.VAULT_TRADE_SWAP_TOOLS, [
+    /swap/i,
+    /trade/i,
+    /transfer/i,
+    /^send(_|$)/i,
+    /execute_?swap/i,
+  ]);
+  const approvePatterns = compilePatterns(process.env.VAULT_TRADE_APPROVE_TOOLS, [
+    /approve/i,
+    /allowance/i,
+    /permit/i,
+  ]);
+  const recipientKeys = csvList(process.env.VAULT_TRADE_RECIPIENT_KEYS, [
+    'recipient',
+    'to',
+    'spender',
+    'destination',
+    'dest',
+    'receiver',
+  ]);
+  const amountKeys = csvList(process.env.VAULT_TRADE_AMOUNT_KEYS, [
+    'amount',
+    'value',
+    'allowance',
+    'approvalAmount',
+  ]);
+
+  let maxApproval = 2n ** 200n;
+  const rawMax = process.env.VAULT_TRADE_MAX_APPROVAL;
+  if (rawMax && /^\d+$/.test(rawMax.trim())) {
+    try {
+      maxApproval = BigInt(rawMax.trim());
+    } catch {
+      /* keep default */
+    }
+  }
+
+  return {
+    enabled,
+    mode,
+    recipientAllowlist,
+    swapPatterns,
+    approvePatterns,
+    recipientKeys,
+    amountKeys,
+    maxApproval,
+  };
 }
 
 function positiveInt(raw: string | undefined, def: number): number {

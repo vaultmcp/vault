@@ -1,0 +1,48 @@
+{
+  "entries": [
+    {
+      "id": "rh-example-official-quotes",
+      "name": "RH Chain Quotes (EXAMPLE — official-style)",
+      "mcpEndpoint": "https://mcp.example.robinhood-chain.example/quotes",
+      "category": "market-data",
+      "scanStatus": "scanned",
+      "findingsCount": 0,
+      "lastScannedAt": "2026-07-08T14:20:00.000Z",
+      "attestation": { "status": "pending" },
+      "note": "EXAMPLE ENTRY. Official-looking read-only quote feed; passed a Vault scan with zero findings. On-chain attestation is pending — Vault's Base/EAS attestation is roadmap, not shipped."
+    },
+    {
+      "id": "rh-example-yield-router",
+      "name": "USDG Yield Router (EXAMPLE — flagged)",
+      "mcpEndpoint": "https://mcp.example.robinhood-chain.example/yield-router",
+      "category": "execution",
+      "scanStatus": "flagged",
+      "findingsCount": 2,
+      "lastScannedAt": "2026-07-09T09:05:00.000Z",
+      "attestation": { "status": "pending" },
+      "note": "EXAMPLE ENTRY. Vault flagged 2 findings: a tool response embedded instructions to redirect USDG to an unlisted wallet. Do not connect an autonomous agent until resolved."
+    },
+    {
+      "id": "rh-example-portfolio-agent",
+      "name": "Portfolio Balancer MCP (EXAMPLE — unscanned)",
+      "mcpCommand": "npx @example/rh-portfolio-agent",
+      "category": "execution",
+      "scanStatus": "unscanned",
+      "findingsCount": 0,
+      "lastScannedAt": null,
+      "attestation": { "status": "pending" },
+      "note": "EXAMPLE ENTRY. Community stdio server that rebalances a portfolio. Not yet run through Vault — status unknown. Wrap with `npx @aimcpvault/mcp-proxy` before granting execution rights."
+    },
+    {
+      "id": "rh-example-wallet-read",
+      "name": "Wallet Read-Only Bridge (EXAMPLE — scanned)",
+      "mcpEndpoint": "https://mcp.example.robinhood-chain.example/wallet-read",
+      "category": "wallet",
+      "scanStatus": "scanned",
+      "findingsCount": 0,
+      "lastScannedAt": "2026-07-07T18:41:00.000Z",
+      "attestation": { "status": "pending" },
+      "note": "EXAMPLE ENTRY. Read-only wallet/balance bridge; clean Vault scan. Attestation pending until Base/EAS rollout."
+    }
+  ]
+}

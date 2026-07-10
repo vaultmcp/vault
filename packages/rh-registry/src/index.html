@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vault × Robinhood Chain — MCP server safety registry</title>
+<style>
+  :root { --green:#00ff66; --bg:#050505; --panel:#0c0c0c; --panel2:#111; --line:#1f2328; --dim:#7a7a7a; --red:#ff4757; --yellow:#ffb547; --txt:#e8e8e8; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .wrap { max-width:1020px; margin:0 auto; padding:28px 20px 72px; }
+  h1 { font-size:21px; margin:0 0 4px; } h1 .g { color:var(--green); }
+  .sub { color:var(--dim); margin:0 0 18px; font-size:13px; }
+  .cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .card { flex:1 1 130px; border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:12px 14px; }
+  .card .n { font-size:22px; font-weight:700; color:var(--green); }
+  .card.warn .n { color:var(--yellow); } .card.bad .n { color:var(--red); } .card.mut .n { color:var(--txt); }
+  .card .l { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; border:1px solid var(--line); border-radius:10px; overflow:hidden; font-size:12.5px; }
+  thead th { text-align:left; background:var(--panel2); color:var(--dim); font-weight:600; padding:9px 12px; border-bottom:1px solid var(--line); text-transform:uppercase; letter-spacing:.03em; font-size:11px; }
+  tbody td { padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:last-child td { border-bottom:0; }
+  tbody tr { background:var(--panel); }
+  .name { color:var(--txt); font-weight:600; }
+  .ep { color:var(--dim); font-size:11px; word-break:break-all; }
+  .cat { color:var(--green); }
+  .st { white-space:nowrap; font-weight:700; }
+  .st.scanned { color:var(--green); } .st.flagged { color:var(--red); } .st.unscanned { color:var(--dim); }
+  .att { white-space:nowrap; }
+  .att.attested { color:var(--green); } .att.pending { color:var(--yellow); }
+  .note { color:#aab0b6; font-size:11.5px; }
+  .foot { color:var(--dim); font-size:12px; margin-top:18px; } code { color:var(--green); }
+  .disclaimer { border:1px solid #4a3a17; background:#160f04; color:var(--yellow); border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:12px; }
+  .status { color:var(--dim); font-size:12.5px; padding:8px 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vault × <span class="g">Robinhood Chain</span> — MCP server safety registry</h1>
+  <p class="sub">Which trading MCP servers have been scanned by Vault for prompt injection, and their safety status.</p>
+
+  <div class="disclaimer">
+    Directory entries below are <b>examples</b>. On-chain attestation is Vault's <b>roadmap</b> (Base + EAS) and is not shipped —
+    attestation reads <b>pending</b> until a real EAS reference exists. Vault never fabricates attestation hashes.
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="status" id="status">Loading registry…</div>
+  <table id="tbl" hidden>
+    <thead>
+      <tr><th>Server</th><th>Category</th><th>Scan status</th><th>Attestation</th><th>Last scanned</th><th>Note</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <p class="foot">Scan any MCP trading server: <code>npx @aimcpvault/mcp-proxy -- &lt;trading server&gt;</code> · vaultmcp.io</p>
+</div>
+
+<script>
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function scanCell(e) {
+  if (e.scanStatus === 'scanned') return '<span class="st scanned">✓ scanned</span>';
+  if (e.scanStatus === 'flagged') return '<span class="st flagged">⚠ flagged · ' + e.findingsCount + ' finding' + (e.findingsCount === 1 ? '' : 's') + '</span>';
+  return '<span class="st unscanned">– unscanned</span>';
+}
+
+function attCell(a) {
+  if (a && a.status === 'attested') {
+    var ref = a.easUid ? ' <span class="ep">' + esc(a.easUid) + '</span>' : '';
+    return '<span class="att attested">⛓ attested</span>' + ref;
+  }
+  return '<span class="att pending">pending</span>';
+}
+
+function endpoint(e) {
+  if (e.mcpEndpoint) return esc(e.mcpEndpoint);
+  if (e.mcpCommand) return '$ ' + esc(e.mcpCommand);
+  return '';
+}
+
+function cards(s) {
+  var el = document.getElementById('cards');
+  el.innerHTML = [
+    ['', s.total, 'servers'],
+    ['', s.scanned, 'scanned'],
+    ['bad', s.flagged, 'flagged'],
+    ['mut', s.unscanned, 'unscanned'],
+    ['warn', s.pendingAttestation, 'attest. pending'],
+  ].map(function (c) {
+    return '<div class="card ' + c[0] + '"><div class="n">' + c[1] + '</div><div class="l">' + c[2] + '</div></div>';
+  }).join('');
+}
+
+function render(data) {
+  cards(data.summary);
+  var rows = data.entries.map(function (e) {
+    return '<tr>' +
+      '<td><div class="name">' + esc(e.name) + '</div><div class="ep">' + endpoint(e) + '</div></td>' +
+      '<td class="cat">' + esc(e.category) + '</td>' +
+      '<td>' + scanCell(e) + '</td>' +
+      '<td>' + attCell(e.attestation) + '</td>' +
+      '<td class="ep">' + esc(e.lastScannedAt || '—') + '</td>' +
+      '<td class="note">' + esc(e.note) + '</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('rows').innerHTML = rows;
+  document.getElementById('tbl').hidden = false;
+  document.getElementById('status').hidden = true;
+}
+
+fetch('/registry.json')
+  .then(function (r) { return r.json(); })
+  .then(render)
+  .catch(function (err) {
+    document.getElementById('status').textContent = 'Failed to load registry: ' + err;
+  });
+</script>
+</body>
+</html>

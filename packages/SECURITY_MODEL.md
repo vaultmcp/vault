@@ -41,9 +41,36 @@ gate on sensitive tool calls.
 9. **Tool-output tokens flowing back into sensitive tool calls** (e.g. an
    exfiltration URL pulled from a poisoned file then passed to `http_get`) —
    **capability firewall** (off by default; enable with `VAULT_CAPABILITY=1`).
-10. **Silent tool-manifest drift** (an upstream MCP server adds, removes, or
+10. **Injected redirection of on-chain trades** (a poisoned quote/metadata
+    steering a trading agent's `execute_swap`/`approve` to an attacker address,
+    or into an unlimited approval) — **trade guard** (off by default; enable
+    with `VAULT_TRADE_GUARD=1`). A specialized capability gate for trading
+    tools: it extracts the recipient/spender and approval amount and enforces
+    an allowlist, blocks a recipient sourced from tool output (tainted), and
+    blocks unlimited approvals to non-allowlisted spenders. A second line of
+    defense that holds even when a novel injection slips past the content
+    scanner. See "Trade guard configuration" below.
+11. **Silent tool-manifest drift** (an upstream MCP server adds, removes, or
     changes a tool between sessions) — **manifest verification** (on by
     default; `VAULT_MANIFEST_CHECK=on`).
+
+### Trade guard configuration
+
+Off by default. All are environment variables read at startup.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VAULT_TRADE_GUARD` | off | `1`/`true`/`on` to enable. |
+| `VAULT_TRADE_GUARD_MODE` | `block` | `block` or `warn` (warn passes the call but annotates stderr/audit). |
+| `VAULT_TRADE_ALLOWLIST` | empty | Comma-separated recipient/spender addresses always allowed. Empty = allowlist check off (taint + approval rules still apply). |
+| `VAULT_TRADE_SWAP_TOOLS` | `swap,trade,transfer,send,execute_swap` | Regexes matching swap-like tool names. |
+| `VAULT_TRADE_APPROVE_TOOLS` | `approve,allowance,permit` | Regexes matching approval-like tool names. |
+| `VAULT_TRADE_RECIPIENT_KEYS` | `recipient,to,spender,destination,dest,receiver` | Argument keys carrying the recipient/spender address. |
+| `VAULT_TRADE_AMOUNT_KEYS` | `amount,value,allowance,approvalAmount` | Argument keys carrying an approval amount. |
+| `VAULT_TRADE_MAX_APPROVAL` | `2**200` | Approvals at or above this count as unlimited. |
+
+The trade guard composes with the generic capability firewall — both run on
+every `tools/call` and the stronger decision (block > warn > allow) wins.
 
 ## Threats Vault does NOT defend against
 

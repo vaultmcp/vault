@@ -5,6 +5,8 @@ import { loadConfig } from '../config.js';
 import {
   TaintStore,
   decideCapability,
+  decideTradePolicy,
+  mergeDecisions,
   type CapabilityConfig,
 } from '../capability/index.js';
 import {
@@ -170,7 +172,10 @@ export function startProxy(cmd: string, args: string[]): void {
       if (name) {
         toolNameById.set(msg.id, name);
 
-        const decision = decideCapability(name, params?.arguments, taint, config.capability);
+        const decision = mergeDecisions(
+          decideCapability(name, params?.arguments, taint, config.capability),
+          decideTradePolicy(name, params?.arguments, taint, config.tradePolicy),
+        );
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
             type: 'capability',
@@ -337,7 +342,8 @@ export function startProxy(cmd: string, args: string[]): void {
             process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
           }
         }
-        if (config.capability.enabled) addResponseToTaint(msg, toolName, taint);
+        if (config.capability.enabled || config.tradePolicy.enabled)
+          addResponseToTaint(msg, toolName, taint);
       }
 
       process.stdout.write(JSON.stringify(msg) + '\n');

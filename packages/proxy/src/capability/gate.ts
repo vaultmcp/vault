@@ -52,6 +52,17 @@ export function decideCapability(
   };
 }
 
+/// Combine two gate decisions, taking the stronger action (block > warn > allow).
+/// Lets the generic capability gate and the specialized trade policy flow through one
+/// enforcement path in the transports. The stronger decision's metadata is preserved;
+/// when the loser also fired, its reason is appended so audit logs keep both.
+export function mergeDecisions(a: GateDecision, b: GateDecision): GateDecision {
+  const rank = (x: GateAction): number => (x === 'block' ? 2 : x === 'warn' ? 1 : 0);
+  const [strong, weak] = rank(a.action) >= rank(b.action) ? [a, b] : [b, a];
+  if (weak.action === 'allow' || !weak.reason) return strong;
+  return { ...strong, reason: [strong.reason, weak.reason].filter(Boolean).join(' | ') };
+}
+
 function stringifyArgs(args: unknown): string {
   if (args == null) return '';
   if (typeof args === 'string') return args;

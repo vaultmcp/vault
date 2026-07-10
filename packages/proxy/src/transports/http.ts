@@ -10,6 +10,8 @@ import { loadConfig } from '../config.js';
 import {
   TaintStore,
   decideCapability,
+  decideTradePolicy,
+  mergeDecisions,
 } from '../capability/index.js';
 import {
   ManifestChecker,
@@ -152,7 +154,10 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
         toolName = params.name;
         toolArgs = params.arguments;
 
-        const decision = decideCapability(toolName, toolArgs, taint, config.capability);
+        const decision = mergeDecisions(
+          decideCapability(toolName, toolArgs, taint, config.capability),
+          decideTradePolicy(toolName, toolArgs, taint, config.tradePolicy),
+        );
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
             type: 'capability',
@@ -294,7 +299,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
                   process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
                 }
               }
-              if (config.capability.enabled) {
+              if (config.capability.enabled || config.tradePolicy.enabled) {
                 for (const item of scannedMsg.result.content) {
                   if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
                     taint.add({ toolName: scannedTool, content: item.text, addedAt: Date.now() });
@@ -440,7 +445,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
           process.stderr.write(`vault: persistence insert failed: ${err instanceof Error ? err.message : String(err)}\n`);
         }
       }
-      if (config.capability.enabled) {
+      if (config.capability.enabled || config.tradePolicy.enabled) {
         for (const item of respMsg.result.content) {
           if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
             taint.add({ toolName, content: item.text, addedAt: Date.now() });

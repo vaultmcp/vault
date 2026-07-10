@@ -1,0 +1,21 @@
+{
+  "name": "@vaultmcp/rh-trade",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A real MCP (Model Context Protocol) trading server for Robinhood Chain, meant to be wrapped by Vault's prompt-injection proxy. Hand-rolled NDJSON JSON-RPC 2.0 over stdio; viem for on-chain reads and tx building. execute_swap defaults to dry-run.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
