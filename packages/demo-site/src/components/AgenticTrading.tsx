@@ -15,7 +15,7 @@ const layers = [
 
 export function AgenticTrading() {
   return (
-    <section className="border-b border-line">
+    <section id="agentic-trading" className="scroll-mt-16 border-b border-line">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <p className="text-xs uppercase tracking-widish text-dim">new · agentic trading</p>
         <h2 className="mt-4 max-w-3xl text-2xl font-bold text-ink md:text-3xl">
@@ -58,6 +58,28 @@ export function AgenticTrading() {
               <span className="text-dim">&lt;your trading MCP server&gt;</span>
             </div>
           </div>
+        </div>
+
+        {/* CTA */}
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+          <a
+            href="https://github.com/vaultmcp/vault/tree/main/packages/rh-demo"
+            target="_blank"
+            rel="noreferrer"
+            className="group inline-flex items-center gap-2 rounded-sm border border-accent px-4 py-2 text-accent glow-accent-sm hover:opacity-80"
+          >
+            <span>See the live hijack — and the block</span>
+            <span className="opacity-70 transition-opacity group-hover:opacity-100">↗</span>
+          </a>
+          <a
+            href="https://github.com/vaultmcp/vault/blob/main/packages/rh-demo/content/blog-agentic-trading-security.md"
+            target="_blank"
+            rel="noreferrer"
+            className="group inline-flex items-center gap-2 text-dim hover:text-ink"
+          >
+            <span>Read: the attack surface nobody&apos;s pricing in</span>
+            <span className="text-xs opacity-60 transition-opacity group-hover:opacity-100">↗</span>
+          </a>
         </div>
       </div>
     </section>
