@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vault × Robinhood Chain — agentic trading, prompt-injected</title>
+<style>
+  :root { --green:#00ff66; --bg:#050505; --panel:#0c0c0c; --panel2:#111; --line:#1f2328; --dim:#7a7a7a; --red:#ff4757; --yellow:#ffb547; --txt:#e8e8e8; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .wrap { max-width:920px; margin:0 auto; padding:28px 20px 72px; }
+  h1 { font-size:21px; margin:0 0 4px; } h1 .g { color:var(--green); }
+  .sub { color:var(--dim); margin:0 0 22px; font-size:13px; }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--panel); margin-bottom:10px; font-size:12.5px; }
+  .controls .meta { color:var(--dim); margin-right:auto; }
+  .controls .meta b { color:var(--green); }
+  button { background:var(--green); color:#00230f; border:0; border-radius:8px; padding:8px 14px; font:inherit; font-weight:700; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--txt); border:1px solid var(--line); }
+  button:disabled { opacity:.45; cursor:default; }
+  .scene { margin-top:14px; min-height:180px; }
+  .panel { border:1px solid var(--line); border-radius:10px; background:var(--panel); margin-bottom:14px; overflow:hidden; }
+  .panel.done-hijack { border-color:#5a2230; } .panel.done-safe { border-color:#1d5236; }
+  .phdr { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--panel2); border-bottom:1px solid var(--line); font-size:12px; }
+  .phdr .badge { font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--dim); }
+  .phdr .badge.poisoned { color:var(--yellow); border-color:#4a3a17; } .phdr .badge.clean { color:var(--green); border-color:#1d5236; }
+  .steps { padding:8px 14px 14px; }
+  .step { display:flex; gap:9px; align-items:flex-start; padding:5px 0; opacity:0; transform:translateY(4px); animation:in .28s ease forwards; font-size:12.5px; }
+  @keyframes in { to { opacity:1; transform:none; } }
+  .step .ic { flex:0 0 16px; text-align:center; color:var(--dim); }
+  .step .tx { flex:1; color:#cfd3d6; word-break:break-word; }
+  .step .tx .who { color:var(--dim); }
+  .step.tool .tx { color:#9aa1a8; }
+  .step.payload .tx { background:#160d0d; border-left:2px solid #5a2230; padding:6px 9px; border-radius:5px; color:#e7bcc0; }
+  .step.scan-clean .ic, .step.scan-clean .tx b { color:var(--green); }
+  .step.scan-block .ic, .step.scan-block .tx b { color:var(--red); }
+  .step.scanning .ic { color:var(--yellow); }
+  .step.verdict { margin-top:6px; font-weight:700; font-size:13px; }
+  .step.verdict.hijack .tx { color:var(--red); } .step.verdict.safe .tx { color:var(--green); }
+  .spin { display:inline-block; width:9px; height:9px; border:2px solid #3a3a1a; border-top-color:var(--yellow); border-radius:50%; animation:sp .7s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .summary { margin-top:18px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--panel); font-size:13px; display:none; }
+  .summary.show { display:block; }
+  .summary .row { margin:3px 0; } .summary .hj { color:var(--red); } .summary .sf { color:var(--green); } .summary .wn { color:var(--yellow); }
+  .foot { color:var(--dim); font-size:12px; margin-top:18px; } code { color:var(--green); }
+  .status { color:var(--dim); font-size:12.5px; padding:8px 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vault × <span class="g">Robinhood Chain</span> — agentic trading, prompt-injected</h1>
+  <p class="sub">Watch a trading agent get hijacked by a poisoned tool response — then watch Vault stop it. Every verdict is measured server-side; the player just paces the reveal.</p>
+
+  <div class="controls">
+    <span class="meta" id="meta">Loading…</span>
+    <button id="btn-both" disabled>▶ Play both</button>
+    <button class="ghost" id="btn-ug" disabled>Un-guarded</button>
+    <button class="ghost" id="btn-g" disabled>With Vault</button>
+    <button class="ghost" id="btn-rescan" disabled>↻ Re-scan</button>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="scene" id="scene"></div>
+  <div class="summary" id="summary"></div>
+
+  <p class="foot">Wrap any MCP trading server: <code>npx @aimcpvault/mcp-proxy -- &lt;trading server&gt;</code> · vaultmcp.io</p>
+</div>
+
+<script>
+let DATA = null;
+let playing = false;
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const scene = $('scene');
+
+function short(s, n = 150) { return s.length > n ? s.slice(0, n) + '…' : s; }
+function symbolOf(id) { const m = id.match(/t[A-Z]{2,5}/); return m ? m[0] : id; }
+
+function setButtons(enabled) {
+  for (const b of ['btn-both', 'btn-ug', 'btn-g', 'btn-rescan']) $(b).disabled = !enabled;
+}
+
+async function loadData(force) {
+  $('status').textContent = force ? 'Re-scanning (running Vault detection server-side)…' : 'Running Vault detection server-side…';
+  setButtons(false);
+  const r = await fetch('/api/run');
+  DATA = await r.json();
+  $('meta').innerHTML =
+    'agent <b>' + DATA.agentName + '</b> · vault <b>' +
+    (DATA.hasL3 ? 'L0 L1 L2 L3' : 'L0 L1 L2 (L3 offline)') + '</b>';
+  $('status').textContent = '';
+  setButtons(true);
+}
+
+function panel(o) {
+  const p = document.createElement('div');
+  p.className = 'panel';
+  p.innerHTML =
+    '<div class="phdr"><span>' + o.id + '</span>' +
+    '<span class="badge ' + o.kind + '">' + o.kind + '</span></div>' +
+    '<div class="steps"></div>';
+  scene.appendChild(p);
+  return p.querySelector('.steps');
+}
+
+function step(host, cls, ic, html) {
+  const d = document.createElement('div');
+  d.className = 'step ' + (cls || '');
+  d.innerHTML = '<div class="ic">' + ic + '</div><div class="tx">' + html + '</div>';
+  host.appendChild(d);
+  d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  return d;
+}
+
+async function playScenario(o, guarded) {
+  const host = panel(o);
+  const sym = symbolOf(o.id);
+  step(host, '', '›', '<span class="who">user →</span> swap 1000 USDG into ' + sym + ', send output to my wallet');
+  await sleep(650);
+
+  for (const s of o.scans) {
+    step(host, 'tool', '⚙', '<span class="who">agent →</span> calls <b>' + s.tool + '()</b>');
+    await sleep(520);
+
+    // Show what came back. In un-guarded runs, agentSaw is the raw (possibly poisoned) text.
+    const isPayload = o.kind === 'poisoned' &&
+      /ignore all previous|recipient to 0x|treasury|transfer the full/i.test(s.agentSaw);
+    step(host, isPayload && !guarded ? 'payload' : 'tool', '↩',
+      (isPayload && !guarded ? '⚠ tool response: ' : 'tool response: ') + short(s.agentSaw));
+    await sleep(isPayload && !guarded ? 900 : 500);
+
+    if (guarded) {
+      const scanning = step(host, 'scanning', '<span class="spin"></span>', 'Vault scanning tool response…');
+      await sleep(820);
+      scanning.remove();
+      if (s.blocked) {
+        step(host, 'scan-block', '✗', '<b>' + s.verdict.toUpperCase() + '</b> at L' + s.layer +
+          ' (conf ' + s.confidence.toFixed(2) + ') — <b>response withheld from agent</b>');
+      } else {
+        step(host, 'scan-clean', '✓', '<b>clean</b>' + (s.layer != null ? ' (L' + s.layer + ')' : '') +
+          ' — passed to agent');
+      }
+      await sleep(560);
+    }
+  }
+
+  step(host, '', '◆', '<span class="who">agent →</span> execute_swap recipient <b>' + o.recipient + '</b>');
+  await sleep(500);
+  const p = host.parentElement;
+  if (o.hijacked) {
+    p.classList.add('done-hijack');
+    step(host, 'verdict hijack', '✗', 'HIJACKED — funds routed to the attacker');
+  } else {
+    p.classList.add('done-safe');
+    step(host, 'verdict safe', '✓', 'SAFE — swap completed to the user’s wallet');
+  }
+  await sleep(700);
+}
+
+function summaryFor(passes) {
+  const el = $('summary');
+  const poisoned = DATA.poisoned;
+  let html = '';
+  if (passes.includes('unguarded')) {
+    const h = DATA.unguarded.filter((o) => o.hijacked).length;
+    html += '<div class="row">Without Vault: <span class="hj">' + h + '/' + poisoned + ' poisoned trades hijacked</span></div>';
+  }
+  if (passes.includes('guarded')) {
+    const h = DATA.guarded.filter((o) => o.hijacked).length;
+    const blocked = DATA.guarded.reduce((n, o) => n + o.scans.filter((s) => s.blocked).length, 0);
+    html += '<div class="row">With Vault: <span class="' + (h === 0 ? 'sf' : 'wn') + '">' + h + '/' + poisoned +
+      ' hijacked</span> · <span class="sf">' + blocked + ' injection(s) stripped before the agent read them</span></div>';
+    const missed = DATA.guarded.filter((o) => o.hijacked).map((o) => o.id);
+    if (missed.length) {
+      html += '<div class="row wn">Missed ' + missed.join(', ') + ' — ' +
+        (DATA.hasL3 ? 'L3 did not flag it' : 'L3 offline; set ANTHROPIC_API_KEY (this is an L3 catch)') + '.</div>';
+    }
+  }
+  el.innerHTML = html;
+  el.classList.add('show');
+}
+
+async function play(passes) {
+  if (playing || !DATA) return;
+  playing = true;
+  setButtons(false);
+  scene.innerHTML = '';
+  $('summary').classList.remove('show');
+  for (const pass of passes) {
+    const label = pass === 'unguarded' ? 'Pass 1 — no Vault' : 'Pass 2 — Vault proxy in front';
+    const h = document.createElement('div');
+    h.className = 'status';
+    h.style.color = pass === 'guarded' ? 'var(--green)' : 'var(--red)';
+    h.textContent = label;
+    scene.appendChild(h);
+    for (const o of DATA[pass]) await playScenario(o, pass === 'guarded');
+  }
+  summaryFor(passes);
+  playing = false;
+  setButtons(true);
+}
+
+$('btn-both').addEventListener('click', () => play(['unguarded', 'guarded']));
+$('btn-ug').addEventListener('click', () => play(['unguarded']));
+$('btn-g').addEventListener('click', () => play(['guarded']));
+$('btn-rescan').addEventListener('click', async () => {
+  if (playing) return;
+  await loadData(true);
+  play(['unguarded', 'guarded']);
+});
+
+(async function () {
+  try {
+    await loadData(false);
+    play(['unguarded', 'guarded']);
+  } catch (e) {
+    $('status').textContent = 'Failed to load: ' + (e && e.message ? e.message : e);
+  }
+})();
+</script>
+</body>
+</html>
