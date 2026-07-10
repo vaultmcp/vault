@@ -43,9 +43,15 @@ pnpm --filter @vaultmcp/rh-demo demo
 # Browser — same demo, rendered in the Vault palette at http://localhost:5178
 pnpm --filter @vaultmcp/rh-demo web
 
-# Full detection: L3 LLM judge + a real Claude-driven agent (not the scripted one).
+# Full detection — ANTHROPIC_API_KEY enables Vault's L3 judge, which catches the
+# SUBTLE injection too. Verified: with L3 on, both injections are stripped (see below).
 ANTHROPIC_API_KEY=... pnpm --filter @vaultmcp/rh-demo demo
 ```
+
+The key enables Vault's **detector** (L3). It does **not** change who the agent is —
+by design, so the un-guarded hijack always reproduces. To instead drive a real Claude
+model as the agent (an honest, separate experiment — frontier models may resist the
+injection on their own), set `RH_AGENT=claude` alongside the key.
 
 The browser build runs a zero-dependency Node `http` server (detection is Node-only,
 so all scanning happens server-side; the page fetches structured results from `/api/run`).
@@ -60,11 +66,13 @@ The demo measures every number from the actual run — nothing is hard-coded.
   it — and the demo says so, then points you at enabling L3. This is verified, not assumed:
   the subtle payload's L2 distance is ~0.42, inside the L3 gate zone (< 0.50), so with a key
   set the pipeline escalates it to the judge (see `test/demo.test.ts`).
-- **Guarded, full mode (key set):** both injections are handled before the agent acts.
+- **Guarded, full mode (`ANTHROPIC_API_KEY` set):** **both injections stripped, 0/2 hijacked**
+  (measured 2026-07-10). Blatant → L1 (`malicious`, 0.90); subtle → L3 (`malicious`, 0.95);
+  both clean scenarios pass at L3 conf 0.95, no false positives.
 
 > The scripted "naive" agent is a deterministic stand-in for a gullible LLM agent, so the
-> hijack reproduces without an API key. Set `ANTHROPIC_API_KEY` to drive a real Claude agent
-> instead.
+> hijack reproduces every run. `RH_AGENT=claude` swaps in a real Claude agent for a separate
+> "does the model resist on its own?" experiment — not the headline demo.
 
 ## In production
 
