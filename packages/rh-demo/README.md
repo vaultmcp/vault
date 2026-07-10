@@ -37,12 +37,18 @@ Each scenario runs twice:
 ## Run it
 
 ```bash
-# L1+L2 only — reproduces with zero config. Catches the blatant injection.
+# Terminal — L1+L2 only, reproduces with zero config. Catches the blatant injection.
 pnpm --filter @vaultmcp/rh-demo demo
+
+# Browser — same demo, rendered in the Vault palette at http://localhost:5178
+pnpm --filter @vaultmcp/rh-demo web
 
 # Full detection: L3 LLM judge + a real Claude-driven agent (not the scripted one).
 ANTHROPIC_API_KEY=... pnpm --filter @vaultmcp/rh-demo demo
 ```
+
+The browser build runs a zero-dependency Node `http` server (detection is Node-only,
+so all scanning happens server-side; the page fetches structured results from `/api/run`).
 
 ## Honest results
 

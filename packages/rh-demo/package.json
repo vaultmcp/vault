@@ -8,6 +8,7 @@
     "demo": "tsx src/run.ts",
     "demo:guarded": "tsx src/run.ts --guarded",
     "demo:unguarded": "tsx src/run.ts --unguarded",
+    "web": "tsx src/web.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
