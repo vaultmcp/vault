@@ -3,6 +3,7 @@ import { naiveAgent } from '../src/agent.js';
 import { guardToolResponse, warmupLayer2 } from '../src/guard.js';
 import { TradingServer } from '../src/trading-server.js';
 import { findScenario } from '../src/scenario.js';
+import { evaluateScenario } from '../src/engine.js';
 import { AGENT_WALLET, ATTACKER_WALLET } from '../src/chain.js';
 
 const server = new TradingServer();
@@ -56,5 +57,29 @@ describe('Vault guard (L1+L2, no API key)', () => {
     // the pipeline WOULD invoke the L3 judge when ANTHROPIC_API_KEY is set.
     const o = await guardToolResponse('get_quote', server.get_quote('poisoned-tNVDA-subtle'));
     expect(o.result.distance).toBeLessThan(0.5);
+  });
+});
+
+describe('two-layer defense (content scan + trade guard), no API key', () => {
+  beforeAll(async () => {
+    await warmupLayer2();
+  }, 60_000);
+
+  it('trade guard catches the subtle injection the content scanner misses (degraded)', async () => {
+    const s = findScenario('poisoned-tNVDA-subtle')!;
+    const o = await evaluateScenario(server, async (t) => naiveAgent(t), s, true);
+    // Content scan let it through (L3 offline)...
+    expect(o.blocked).toBe(false);
+    // ...but the action guard blocked the swap, so the trade is NOT hijacked.
+    expect(o.tradeGuard?.action).toBe('block');
+    expect(o.hijacked).toBe(false);
+  });
+
+  it('does not touch a clean scenario at either layer', async () => {
+    const s = findScenario('clean-tAAPL')!;
+    const o = await evaluateScenario(server, async (t) => naiveAgent(t), s, true);
+    expect(o.blocked).toBe(false);
+    expect(o.tradeGuard?.action).toBe('allow');
+    expect(o.hijacked).toBe(false);
   });
 });

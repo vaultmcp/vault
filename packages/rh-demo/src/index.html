@@ -145,6 +145,20 @@ async function playScenario(o, guarded) {
 
   step(host, '', '◆', '<span class="who">agent →</span> execute_swap recipient <b>' + o.recipient + '</b>');
   await sleep(500);
+
+  // Second line of defense: the action guard, shown only in guarded runs.
+  if (guarded && o.tradeGuard) {
+    const scanning = step(host, 'scanning', '<span class="spin"></span>', 'Vault trade-guard checking the swap…');
+    await sleep(720);
+    scanning.remove();
+    if (o.tradeGuard.action === 'block') {
+      step(host, 'scan-block', '⛊', '<b>trade-guard BLOCKED</b> — ' + o.tradeGuard.reasons.join('; '));
+    } else {
+      step(host, 'scan-clean', '⛊', '<b>trade-guard allow</b> — recipient allowlisted');
+    }
+    await sleep(560);
+  }
+
   const p = host.parentElement;
   if (o.hijacked) {
     p.classList.add('done-hijack');
@@ -166,13 +180,14 @@ function summaryFor(passes) {
   }
   if (passes.includes('guarded')) {
     const h = DATA.guarded.filter((o) => o.hijacked).length;
-    const blocked = DATA.guarded.reduce((n, o) => n + o.scans.filter((s) => s.blocked).length, 0);
-    html += '<div class="row">With Vault: <span class="' + (h === 0 ? 'sf' : 'wn') + '">' + h + '/' + poisoned +
-      ' hijacked</span> · <span class="sf">' + blocked + ' injection(s) stripped before the agent read them</span></div>';
+    const stripped = DATA.guarded.reduce((n, o) => n + o.scans.filter((s) => s.blocked).length, 0);
+    const actionBlocked = DATA.guarded.filter((o) => o.tradeGuard && o.tradeGuard.action === 'block').length;
+    html += '<div class="row">With Vault: <span class="' + (h === 0 ? 'sf' : 'wn') + '">' + h + '/' + poisoned + ' hijacked</span></div>';
+    html += '<div class="row" style="color:var(--dim)">layer 1 — content scan: <span class="sf">' + stripped + ' injection(s) stripped</span> before the agent read them</div>';
+    html += '<div class="row" style="color:var(--dim)">layer 2 — trade guard: <span class="sf">' + actionBlocked + ' swap(s) blocked</span> at the action (recipient not allowlisted / tainted)</div>';
     const missed = DATA.guarded.filter((o) => o.hijacked).map((o) => o.id);
     if (missed.length) {
-      html += '<div class="row wn">Missed ' + missed.join(', ') + ' — ' +
-        (DATA.hasL3 ? 'L3 did not flag it' : 'L3 offline; set ANTHROPIC_API_KEY (this is an L3 catch)') + '.</div>';
+      html += '<div class="row wn">Missed ' + missed.join(', ') + ' — both layers passed it.</div>';
     }
   }
   el.innerHTML = html;

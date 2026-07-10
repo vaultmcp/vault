@@ -34,6 +34,24 @@ Each scenario runs twice:
 2. **Guarded** — Vault's real detection pipeline scans each response first; flagged content is
    stripped before the agent ever reads it.
 
+## Two layers of defense
+
+Vault doesn't only scan the text an agent reads — it also guards the **action** that
+moves money. The demo runs both:
+
+1. **Content scan** (`guard.ts`) — every tool response is scanned for injection before
+   the agent sees it; flagged content is withheld.
+2. **Trade guard** (`trade-guard.ts`) — before `execute_swap`/`approve` broadcasts, Vault
+   checks the action against policy: recipient allowlist, block unlimited approvals,
+   slippage floor, and **taint** — a swap whose recipient the agent only learned from a
+   tool response is blocked, because a legitimate recipient never comes from tool output.
+
+The payoff: even with the content scanner fully degraded (no API key, L3 offline), the
+subtle injection is still stopped — the scan misses it, but the trade guard blocks the
+swap to a non-allowlisted, tainted address. This is the on-chain analogue of the proxy's
+capability firewall (`packages/proxy/src/capability`). Verified in `test/trade-guard.test.ts`
+and `test/demo.test.ts`.
+
 ## Run it
 
 ```bash
