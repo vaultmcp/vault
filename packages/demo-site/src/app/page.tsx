@@ -1,6 +1,7 @@
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { WhyVault } from '@/components/WhyVault';
+import { AgenticTrading } from '@/components/AgenticTrading';
 import { WhatWePublish } from '@/components/WhatWePublish';
 import { ScanDemo } from '@/components/ScanDemo';
 import { ThreatFeed } from '@/components/ThreatFeed';
@@ -20,6 +21,7 @@ export default function Page() {
       <main>
         <Hero />
         <WhyVault />
+        <AgenticTrading />
         <WhatWePublish />
         <ScanDemo />
         <ThreatFeed collectorUrl={collectorUrl} />
