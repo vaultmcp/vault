@@ -4,6 +4,7 @@ import path from 'node:path';
 import { loadConfig } from '../config.js';
 import {
   TaintStore,
+  TradeRateState,
   decideCapability,
   decideTradePolicy,
   mergeDecisions,
@@ -115,6 +116,7 @@ export function startProxy(cmd: string, args: string[]): void {
   const serverIdentifier = computeServerIdentifier(cmd, args);
   const toolNameById = new Map<string | number, string>();
   const taint = new TaintStore(config.capability.windowSize);
+  const tradeRate = new TradeRateState();
   const manifest =
     config.manifest.mode !== 'off' ? new ManifestChecker(cmd, args, config.manifest) : null;
   const telemetry: TelemetryReporter = createReporter(config.telemetry);
@@ -174,7 +176,7 @@ export function startProxy(cmd: string, args: string[]): void {
 
         const decision = mergeDecisions(
           decideCapability(name, params?.arguments, taint, config.capability),
-          decideTradePolicy(name, params?.arguments, taint, config.tradePolicy),
+          decideTradePolicy(name, params?.arguments, taint, config.tradePolicy, tradeRate),
         );
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({

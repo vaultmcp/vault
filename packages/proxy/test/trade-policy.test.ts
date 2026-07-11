@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   TaintStore,
+  TradeRateState,
   decideTradePolicy,
   mergeDecisions,
   type TradePolicyConfig,
@@ -18,8 +19,11 @@ function cfg(over: Partial<TradePolicyConfig> = {}): TradePolicyConfig {
     swapPatterns: [/swap/i, /execute_?swap/i, /^send(_|$)/i],
     approvePatterns: [/approve/i, /allowance/i],
     recipientKeys: ['recipient', 'to', 'spender'],
-    amountKeys: ['amount', 'value'],
+    amountKeys: ['amount', 'amountIn', 'value'],
     maxApproval: 2n ** 200n,
+    maxTradeValue: null,
+    maxPerWindow: null,
+    windowMs: 60_000,
     ...over,
   };
 }
@@ -78,6 +82,61 @@ describe('decideTradePolicy', () => {
   it('allows any recipient when the allowlist is empty (taint/approval still apply)', () => {
     const d = decideTradePolicy('execute_swap', { recipient: ATTACKER }, new TaintStore(), cfg({ recipientAllowlist: new Set() }));
     expect(d.action).toBe('allow');
+  });
+});
+
+describe('trade policy — per-trade value cap', () => {
+  const c = cfg({ maxTradeValue: 1000n });
+
+  it('blocks a swap at or above the cap, even to an allowlisted recipient', () => {
+    const d = decideTradePolicy('execute_swap', { recipient: USER, amountIn: '1000' }, new TaintStore(), c);
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/per-trade cap/);
+  });
+
+  it('allows a swap below the cap', () => {
+    const d = decideTradePolicy('execute_swap', { recipient: USER, amountIn: '999' }, new TaintStore(), c);
+    expect(d.action).toBe('allow');
+  });
+
+  it('does not cap when maxTradeValue is null', () => {
+    const d = decideTradePolicy('execute_swap', { recipient: USER, amountIn: '10000000' }, new TaintStore(), cfg());
+    expect(d.action).toBe('allow');
+  });
+});
+
+describe('trade policy — velocity limit', () => {
+  const c = cfg({ maxPerWindow: 2, windowMs: 1000 });
+
+  it('blocks the trade that exceeds the per-window budget', () => {
+    const rate = new TradeRateState();
+    const call = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, rate, now);
+    expect(call(0).action).toBe('allow'); // 1st
+    expect(call(100).action).toBe('allow'); // 2nd
+    expect(call(200).action).toBe('block'); // 3rd within window
+    expect(call(200).reason).toMatch(/rate limit exceeded/);
+  });
+
+  it('lets the budget refill after the window passes', () => {
+    const rate = new TradeRateState();
+    const call = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, rate, now);
+    call(0);
+    call(100);
+    expect(call(200).action).toBe('block');
+    expect(call(1300).action).toBe('allow'); // first two aged out of the 1000ms window
+  });
+
+  it('a hard-blocked trade does not consume the velocity budget', () => {
+    const rate = new TradeRateState();
+    const bad = { recipient: ATTACKER }; // not allowlisted → hard block
+    const good = { recipient: USER };
+    decideTradePolicy('execute_swap', bad, new TaintStore(), c, rate, 0);
+    decideTradePolicy('execute_swap', bad, new TaintStore(), c, rate, 1);
+    // Two blocked attempts shouldn't have counted; two good ones still fit.
+    expect(decideTradePolicy('execute_swap', good, new TaintStore(), c, rate, 2).action).toBe('allow');
+    expect(decideTradePolicy('execute_swap', good, new TaintStore(), c, rate, 3).action).toBe('allow');
   });
 });
 
