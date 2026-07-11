@@ -22,13 +22,37 @@ export interface TradePolicyConfig {
   approvePatterns: RegExp[];
   /** Argument keys that carry the recipient/spender address. */
   recipientKeys: string[];
-  /** Argument keys that carry an approval amount. */
+  /** Argument keys that carry a swap/approval amount. */
   amountKeys: string[];
   /** Approvals at or above this are treated as unlimited. */
   maxApproval: bigint;
+  /** Per-trade value ceiling: a swap whose amount is at or above this is blocked. null = no cap. */
+  maxTradeValue: bigint | null;
+  /** Max allowed (non-blocked) trade actions per window. null = no velocity limit. */
+  maxPerWindow: number | null;
+  /** Velocity window in milliseconds. */
+  windowMs: number;
 }
 
 const ALLOW: GateDecision = { action: 'allow' };
+
+/// Per-session velocity tracker: records the timestamps of ALLOWED trade actions so
+/// the policy can enforce a max-per-window rate limit (anti drain-loop). Created once
+/// per proxied session in the transport, alongside the taint store.
+export class TradeRateState {
+  private times: number[] = [];
+
+  /// Count allowed trades within [now - windowMs, now], pruning older entries.
+  countInWindow(now: number, windowMs: number): number {
+    const cutoff = now - windowMs;
+    this.times = this.times.filter((t) => t >= cutoff);
+    return this.times.length;
+  }
+
+  record(now: number): void {
+    this.times.push(now);
+  }
+}
 
 type TradeKind = 'swap' | 'approve' | null;
 
@@ -49,7 +73,7 @@ function extractRecipient(args: unknown, keys: string[]): string | null {
   return null;
 }
 
-function extractApprovalAmount(args: unknown, keys: string[]): bigint | null {
+function extractAmount(args: unknown, keys: string[]): bigint | null {
   if (args == null || typeof args !== 'object') return null;
   const obj = args as Record<string, unknown>;
   for (const k of keys) {
@@ -69,31 +93,34 @@ function extractApprovalAmount(args: unknown, keys: string[]): bigint | null {
 
 /// Decide whether a trading tool call may proceed. Returns `allow` for anything that
 /// isn't a recognized trade action (so it composes cleanly with the generic gate).
+///
+/// `rate` (optional) enables the per-window velocity limit; it must be the same
+/// per-session instance across calls. `now` is injectable for testing.
 export function decideTradePolicy(
   toolName: string,
   args: unknown,
   taint: TaintStore,
   config: TradePolicyConfig,
+  rate?: TradeRateState,
+  now: number = Date.now(),
 ): GateDecision {
   if (!config.enabled || !toolName) return ALLOW;
 
   const kind = classifyTrade(toolName, config);
   if (kind === null) return ALLOW;
 
-  const recipient = extractRecipient(args, config.recipientKeys);
-  if (!recipient) return ALLOW; // nothing address-shaped to police
-  const recipientLc = recipient.toLowerCase();
-  const allowlisted = config.recipientAllowlist.has(recipientLc);
-
   const reasons: string[] = [];
   let taintSources: GateDecision['taintSources'];
 
-  if (!allowlisted) {
+  // Recipient-based checks — only when the call carries a recipient/spender.
+  const recipient = extractRecipient(args, config.recipientKeys);
+  const allowlisted = recipient ? config.recipientAllowlist.has(recipient.toLowerCase()) : false;
+  if (recipient && !allowlisted) {
     if (config.recipientAllowlist.size > 0) {
       reasons.push(`recipient '${recipient}' is not in the trade allowlist`);
     }
     // Taint on the recipient specifically: did this address come from tool output?
-    const overlap = Math.min(recipientLc.length, 20);
+    const overlap = Math.min(recipient.length, 20);
     const hits = taint.matches(recipient, overlap);
     if (hits.length > 0) {
       reasons.push(`recipient was sourced from an untrusted tool response (tainted)`);
@@ -101,19 +128,40 @@ export function decideTradePolicy(
     }
   }
 
-  if (kind === 'approve' && !allowlisted) {
-    const amount = extractApprovalAmount(args, config.amountKeys);
-    if (amount !== null && amount >= config.maxApproval) {
-      reasons.push(`unlimited approval (${amount}) to a non-allowlisted spender`);
-    }
+  // Amount-based checks.
+  const amount = extractAmount(args, config.amountKeys);
+  if (kind === 'approve' && !allowlisted && amount !== null && amount >= config.maxApproval) {
+    reasons.push(`unlimited approval (${amount}) to a non-allowlisted spender`);
+  }
+  if (kind === 'swap' && config.maxTradeValue !== null && amount !== null && amount >= config.maxTradeValue) {
+    reasons.push(`trade amount ${amount} is at or above the per-trade cap ${config.maxTradeValue}`);
   }
 
-  if (reasons.length === 0) return ALLOW;
+  // A hard block wins immediately — the funds never move, so it does NOT count toward
+  // the velocity budget.
+  if (reasons.length > 0) {
+    return {
+      action: config.mode,
+      reason: `trade-policy: ${reasons.join('; ')}`,
+      matchedPattern: `trade:${kind}`,
+      taintSources,
+    };
+  }
 
-  return {
-    action: config.mode,
-    reason: `trade-policy: ${reasons.join('; ')}`,
-    matchedPattern: `trade:${kind}`,
-    taintSources,
-  };
+  // Velocity: rate-limit the trades that would otherwise be allowed (anti drain-loop).
+  if (config.maxPerWindow !== null && rate) {
+    const count = rate.countInWindow(now, config.windowMs);
+    if (count >= config.maxPerWindow) {
+      return {
+        action: config.mode,
+        reason:
+          `trade-policy: trade rate limit exceeded ` +
+          `(${count} in ${config.windowMs}ms, max ${config.maxPerWindow})`,
+        matchedPattern: `trade:${kind}`,
+      };
+    }
+    rate.record(now);
+  }
+
+  return ALLOW;
 }

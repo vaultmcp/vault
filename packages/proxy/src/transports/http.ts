@@ -9,6 +9,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { loadConfig } from '../config.js';
 import {
   TaintStore,
+  TradeRateState,
   decideCapability,
   decideTradePolicy,
   mergeDecisions,
@@ -99,6 +100,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 export function startHttpProxy(opts: HttpProxyOptions): Server {
   const config = loadConfig();
   const taint = new TaintStore(config.capability.windowSize);
+  const tradeRate = new TradeRateState();
   const manifest =
     config.manifest.mode !== 'off' ? new ManifestChecker('http', [opts.upstream], config.manifest) : null;
   const telemetry: TelemetryReporter = createReporter(config.telemetry);
@@ -156,7 +158,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
 
         const decision = mergeDecisions(
           decideCapability(toolName, toolArgs, taint, config.capability),
-          decideTradePolicy(toolName, toolArgs, taint, config.tradePolicy),
+          decideTradePolicy(toolName, toolArgs, taint, config.tradePolicy, tradeRate),
         );
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({

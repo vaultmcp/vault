@@ -66,11 +66,17 @@ Off by default. All are environment variables read at startup.
 | `VAULT_TRADE_SWAP_TOOLS` | `swap,trade,transfer,send,execute_swap` | Regexes matching swap-like tool names. |
 | `VAULT_TRADE_APPROVE_TOOLS` | `approve,allowance,permit` | Regexes matching approval-like tool names. |
 | `VAULT_TRADE_RECIPIENT_KEYS` | `recipient,to,spender,destination,dest,receiver` | Argument keys carrying the recipient/spender address. |
-| `VAULT_TRADE_AMOUNT_KEYS` | `amount,value,allowance,approvalAmount` | Argument keys carrying an approval amount. |
+| `VAULT_TRADE_AMOUNT_KEYS` | `amount,amountIn,value,allowance,approvalAmount` | Argument keys carrying a swap/approval amount. |
 | `VAULT_TRADE_MAX_APPROVAL` | `2**200` | Approvals at or above this count as unlimited. |
+| `VAULT_TRADE_MAX_VALUE` | unset | Per-trade value cap: a swap at or above this amount is blocked, even to an allowlisted recipient. Unset = no cap. |
+| `VAULT_TRADE_MAX_PER_WINDOW` | unset | Velocity limit: max trades per window (anti drain-loop). Hard-blocked trades don't consume the budget. Unset = no limit. |
+| `VAULT_TRADE_WINDOW_MS` | `60000` | Velocity window, in milliseconds. |
 
-The trade guard composes with the generic capability firewall — both run on
-every `tools/call` and the stronger decision (block > warn > allow) wins.
+Together these form a **spending policy**: allowlist + taint govern *who* receives
+funds, `MAX_APPROVAL` caps approvals, `MAX_VALUE` caps *how much* per trade, and
+`MAX_PER_WINDOW` caps *how fast*. The trade guard composes with the generic
+capability firewall — both run on every `tools/call` and the stronger decision
+(block > warn > allow) wins.
 
 ## Threats Vault does NOT defend against
 

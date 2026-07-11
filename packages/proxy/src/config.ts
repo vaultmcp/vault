@@ -202,20 +202,28 @@ function loadTradePolicyConfig(): TradePolicyConfig {
   ]);
   const amountKeys = csvList(process.env.VAULT_TRADE_AMOUNT_KEYS, [
     'amount',
+    'amountIn',
     'value',
     'allowance',
     'approvalAmount',
   ]);
 
-  let maxApproval = 2n ** 200n;
-  const rawMax = process.env.VAULT_TRADE_MAX_APPROVAL;
-  if (rawMax && /^\d+$/.test(rawMax.trim())) {
+  const bigintEnv = (raw: string | undefined, def: bigint | null): bigint | null => {
+    if (!raw || !/^\d+$/.test(raw.trim())) return def;
     try {
-      maxApproval = BigInt(rawMax.trim());
+      return BigInt(raw.trim());
     } catch {
-      /* keep default */
+      return def;
     }
-  }
+  };
+
+  const maxApproval = bigintEnv(process.env.VAULT_TRADE_MAX_APPROVAL, 2n ** 200n) ?? 2n ** 200n;
+  const maxTradeValue = bigintEnv(process.env.VAULT_TRADE_MAX_VALUE, null);
+
+  const rawPerWindow = process.env.VAULT_TRADE_MAX_PER_WINDOW;
+  const maxPerWindow =
+    rawPerWindow && /^\d+$/.test(rawPerWindow.trim()) ? Number.parseInt(rawPerWindow.trim(), 10) : null;
+  const windowMs = positiveInt(process.env.VAULT_TRADE_WINDOW_MS, 60_000);
 
   return {
     enabled,
@@ -226,6 +234,9 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     recipientKeys,
     amountKeys,
     maxApproval,
+    maxTradeValue,
+    maxPerWindow,
+    windowMs,
   };
 }
 
