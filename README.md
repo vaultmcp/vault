@@ -135,9 +135,9 @@ All numbers below are reproducible from the harness committed in this repo. Each
 | TPR — v2 holdout (L3 enabled, 80 attacks) | **100%** (80 / 80) · 95.5%+ lower bound at 95% CI | [^holdout-l3] |
 | TPR — L1+L2 only, no API key | materially lower (L3 is required for production) | [^holdout-degraded] |
 | False positive rate (benign flagged) | **0.0%** (0 / 100) | [^holdout-l3] |
-| L1 latency (p50 / p99) | 0.03 ms / 0.53 ms | [^holdout-l3] |
-| L2 latency (p50 / p99) | 11.05 ms / 69.75 ms | [^holdout-l3] |
-| L3 latency (p50 / p99) | 1541 ms / 3499 ms | [^holdout-l3] |
+| L1 latency (p50 / p99) | 0.02 ms / 0.04 ms | [^latency] |
+| L2 latency (p50 / p99) | 8.86 ms / 15.11 ms | [^latency] |
+| L3 latency (per call) | ~1.5–2 s (provider round-trip) | [^latency] |
 | Sustained throughput (single proxy) | 100 req/s, 0 errors over 30,000 requests | [^load] |
 | Steady-state memory (RSS) | 135–180 MB after warmup, no leak observed | [^load] |
 | 500 KB response scan time | ~25 s (embedder-bound, see LIMITATIONS §14) | [^edge] |
@@ -145,6 +145,7 @@ All numbers below are reproducible from the harness committed in this repo. Each
 [^holdout-l3]: `packages/eval/results/eval-clean-baseline-v2-L3-enabled-2026-05-21.md` — one-shot eval against v2 holdout constructed after detection code was frozen at commit `8d230e4`. Dataset: `packages/eval/datasets/holdout-v2-novel/` (50 attacks) + `packages/eval/datasets/holdout-v2-paraphrase/` (30 attacks) + `packages/eval/datasets/benign-v2/` (100 entries). L3 enabled (Anthropic Haiku 4.5). No tuning occurred between holdout construction and eval run.
 [^holdout-degraded]: Without `ANTHROPIC_API_KEY`, Vault runs L1+L2 only. On the v2 novel holdout (attacks designed to sit outside L2's detection range) TPR is near 0%; on paraphrase attacks it is ~7%. L3 is the detection backbone for out-of-distribution attacks. See `packages/LIMITATIONS.md` §11 for offline-mode limitations.
 [^load]: `packages/eval/load/report.md` — 100 req/s × 300 s × single stdio proxy instance × ~200-byte stub-MCP responses, L1+L2 only. Past 100 req/s the cliff is not yet measured.
+[^latency]: `packages/eval/results/latency-baseline-2026-07-20.md` — L1/L2 measured on-device over 1,664 samples (public-corpus attacks + benign tool responses) by `packages/eval/src/latency-bench.ts`; reproduce with `cd packages/eval && npx tsx src/latency-bench.ts`. Hardware-dependent (measured on Apple Silicon). L3 is a single provider round-trip (Anthropic Haiku 4.5) — network-bound, not independently re-measured in this run.
 [^edge]: `packages/proxy/test/edge-cases.test.ts` scenario 4. The latency is bounded by the L2 embedder iterating ~140 streaming chunks; L1 stays sub-millisecond at any size. See LIMITATIONS §14.
 
 ---
@@ -202,17 +203,19 @@ See [LIMITATIONS §11](packages/LIMITATIONS.md) for specific FP measurements and
 
 ## Cost transparency
 
-Layer 3 (LLM judge) calls Anthropic Haiku 4.5 on responses that fall in L2's uncertain zone. Estimates:
+Layer 3 (LLM judge) calls Anthropic Haiku 4.5 only on responses that fall in L2's uncertain zone, so cost scales with the **L3 escalation rate** — there is no single fixed per-request cost. The formula:
 
-| scenario | L3 call rate | estimated cost per request |
+**cost / request ≈ L3_rate × ~$0.0005** (Haiku 4.5 input + small output at current pricing).
+
+| L3 escalation rate | cost / request | cost / 1,000 requests |
 |---|---|---|
-| Eval holdout (adversarial dataset) | ~91% | ~$0.0005 |
-| Real MCP traffic (expected) | ~20–40% | ~$0.0001–0.0002 |
-| 100 benign req/hr (steady state) | 20–40% | ~$0.002–0.004/hr total |
+| 5% | ~$0.000025 | ~$0.025 |
+| 20% | ~$0.0001 | ~$0.10 |
+| 40% | ~$0.0002 | ~$0.20 |
 
-- **~$0.0005 per uncertain-zone request** (Haiku 4.5 input + small output at current pricing)
-- **~$0.04/hr at 100 req/hr in production** (20–40% L3 call rate on real traffic)
-- **$0 without API key** — L1+L2 only, TPR drops to near 0% on novel out-of-distribution attacks and FP rate on protocol-encoded traffic rises to ~40%. See [Offline mode](#offline-mode-no-api-key) above. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
+On the adversarial eval holdout, escalation was **~91%** — by construction: every entry is built to sit in L2's uncertain zone. **Real-traffic escalation rate is unmeasured** until we have install telemetry; plug your observed rate into the formula above rather than trusting a guessed number.
+
+- **$0 without an API key** — L1+L2 only. TPR drops to near 0% on novel out-of-distribution attacks and the FP rate on protocol-encoded traffic rises to ~40%. See [Offline mode](#offline-mode-no-api-key) above. The eval harness refuses to run in this mode unless `--allow-degraded` is passed explicitly.
 
 The high L3 rate in our eval (91%) reflects an adversarial dataset — nearly every entry is an attack that lands in L2's uncertain zone by design. Real MCP traffic (mostly clean tool output) has a much lower L3 call rate.
 
@@ -241,11 +244,11 @@ Agent ──► Vault Proxy ──► MCP Server
               ▼  clean → forward   malicious → block/warn
 ```
 
-**Layer 1 — Heuristics** (p50 0.02 ms, p99 0.53 ms[^holdout-l3]): Regex patterns for English instruction overrides, unicode tag smuggling (U+E0000–U+E007F), bidi-control characters (U+202A–U+202E, U+2066–U+2069), zero-width character density, HTML comment injection, long HTML-entity runs, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost. L1 is English-only; see LIMITATIONS §1.
+**Layer 1 — Heuristics** (see [Measured performance](#measured-performance)): Regex patterns for English instruction overrides, unicode tag smuggling (U+E0000–U+E007F), bidi-control characters (U+202A–U+202E, U+2066–U+2069), zero-width character density, HTML comment injection, long HTML-entity runs, and markdown link anchors. High-confidence matches short-circuit — no L2/L3 cost. L1 is English-only; see LIMITATIONS §1.
 
-**Layer 2 — Embeddings** (p50 8.29 ms, p99 53.06 ms[^holdout-l3]): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Matches within distance 0.35 block; borderline cases escalate to L3. The corpus is intentionally public; adversaries who paraphrase past distance 0.35 evade L2 — that class is for L3.
+**Layer 2 — Embeddings** (see [Measured performance](#measured-performance)): Cosine similarity against a curated corpus of 31 attack categories using `bge-small-en-v1.5` (runs entirely on-device, no network call, ~30 MB WASM). Matches within distance 0.35 block; borderline cases escalate to L3. The corpus is intentionally public; adversaries who paraphrase past distance 0.35 evade L2 — that class is for L3.
 
-**Layer 3 — LLM Judge** (~1 s when invoked): Claude Haiku 4.5 (or GPT-4o-mini with OpenAI key) resolves ambiguous cases. Only runs when L2 is uncertain — typically <5% of requests. Requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. **Without a key, L3 is disabled and TPR drops to the L1+L2 number reported above.**
+**Layer 3 — LLM Judge** (~1.5–2 s per call, provider round-trip): Claude Haiku 4.5 (or GPT-4o-mini with OpenAI key) resolves ambiguous cases. Only runs when L2 is uncertain; the escalation rate depends on your traffic (see [Cost transparency](#cost-transparency)). Requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. **Without a key, L3 is disabled and TPR drops to the L1+L2 number reported above.**
 
 ### Capability Firewall
 
