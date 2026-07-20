@@ -6,7 +6,7 @@ export function Hero() {
         {/* Eyebrow */}
         <div className="flex items-center gap-2.5 text-xs uppercase tracking-widish text-dim">
           <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-accent" />
-          <span>private beta · vaultmcp</span>
+          <span>prompt-injection firewall for MCP · vaultmcp</span>
         </div>
 
         {/* Headline */}

@@ -4,6 +4,22 @@
 
 Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through four layers of detection (L0 deterministic decoder, L1 heuristics, L2 embedding similarity, L3 LLM judge).
 
+## Quickstart
+
+Wrap any MCP server — no config change to your agent:
+
+```bash
+# Set a key for full detection (or run without one for L1+L2 offline mode)
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Put Vault in front of any MCP server
+npx @aimcpvault/mcp-proxy -- npx -y @modelcontextprotocol/server-filesystem /data
+```
+
+That's it — every tool response is now scanned before your agent sees it. Point your agent at the proxy instead of the server.
+
+**Proof:** 100% TPR (80/80) on a frozen public holdout, 0.0% FPR on 100 benign docs — see [Measured performance](#measured-performance). How the four layers work: [How it works](#how-it-works). No key? Vault runs L1+L2 only — see [Offline mode](#offline-mode-no-api-key).
+
 ---
 
 ## Requirements
