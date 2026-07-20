@@ -13,7 +13,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "score": "tsx src/index.ts",
-    "eval": "tsx src/run.ts"
+    "eval": "tsx src/run.ts",
+    "bench:latency": "tsx src/latency-bench.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
