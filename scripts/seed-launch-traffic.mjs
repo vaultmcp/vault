@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * One-time launch-day seeding script. Runs real scans through the proxy using public
- * corpus payloads. Documented in OPERATOR_NOTES.md.
+ * corpus payloads. Transparency rationale: docs/threat-feed.md.
  *
  * What it does:
  *  - Picks 12 attack payloads from packages/corpus/injection-patterns.json (2 per category,

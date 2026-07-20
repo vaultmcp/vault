@@ -2,15 +2,17 @@
 
 > Look up an MCP server's on-chain Vault reputation. Read-only. No key needed.
 
-Standalone CLI. Queries the [VaultReputation](https://github.com/vaultmcp/vault) contract on Base via viem and prints a colored score, scans, blocks, and a basescan link.
+Standalone CLI. Queries the [VaultReputation](https://github.com/vaultmcp/vault) contract via viem and prints a colored score, scans, blocks, and a block-explorer link. Attestations currently live on **Base Sepolia** (testnet); Base mainnet is pending.
 
-## Install
+> **Status:** not yet published. The commands below (npx, Homebrew tap, install script) ship with **v0.3**. Until then, run it from source: `pnpm --filter @vaultmcp/check build && node packages/check/dist/index.js <target>`.
+
+## Install (planned for v0.3)
 
 ```bash
-# Via npx (no install) — easiest
+# Via npx (no install)
 npx @vaultmcp/check stdio:npx:@modelcontextprotocol/server-filesystem
 
-# Via Homebrew (after launch)
+# Via Homebrew
 brew tap vaultmcp/tap
 brew install vault-check
 

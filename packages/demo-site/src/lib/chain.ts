@@ -98,19 +98,29 @@ export interface LeaderboardEntry {
   score: number;
 }
 
+/// Synthetic dev/test attestations written to the testnet contract during bring-up
+/// (e.g. `stdio:node:up`, `stdio:node:test-attest`). Filtered out of the public
+/// leaderboard so it doesn't advertise our own smoke-test servers at a perfect score.
+const TEST_LEADERBOARD_URL = /(^|:)(up|test-attest)$|:test(-|$)|smoke|healthcheck/i;
+
 export async function readLeaderboard(n: number, network: Network = defaultNetwork()): Promise<LeaderboardEntry[]> {
   const d = deploymentFor(network);
   if (!d.vaultReputation) return [];
   const safeN = Math.min(Math.max(1, Math.floor(n)), 50);
   const addr = d.vaultReputation as Hex;
   const client = publicClientFor(network);
+  // Over-fetch so the test-entry filter still yields up to `safeN` real servers.
+  const fetchN = Math.min(safeN + 15, 50);
   const [urls, scores] = await client.readContract({
     address: addr,
     abi: REPUTATION_ABI,
     functionName: 'getLeaderboard',
-    args: [safeN],
+    args: [fetchN],
   });
-  return urls.map((url, i) => ({ url, score: Number(scores[i] ?? 0) })).filter((e) => e.url.length > 0);
+  return urls
+    .map((url, i) => ({ url, score: Number(scores[i] ?? 0) }))
+    .filter((e) => e.url.length > 0 && !TEST_LEADERBOARD_URL.test(e.url))
+    .slice(0, safeN);
 }
 
 /// Aggregate stats used by /api/stats and the homepage counter strip.
