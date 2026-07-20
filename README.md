@@ -2,7 +2,7 @@
 
 **Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **X:** [@vaultmcp](https://x.com/vaultmcp)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
 
-Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through three layers of detection.
+Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through four layers of detection (L0 deterministic decoder, L1 heuristics, L2 embedding similarity, L3 LLM judge).
 
 ---
 
@@ -267,7 +267,7 @@ VAULT_MANIFEST_CHECK=strict  # treat drift as error
 
 ### Optional: on-chain attestation (opt-in)
 
-When an operator opts in (`VAULT_ATTEST=1` + a funded hot wallet), scan verdicts can be attested on-chain via [EAS](https://attest.sh) on Base. Each MCP server then accumulates a public, append-only reputation score any agent can query before connecting. Off by default — no chain dependency for using the proxy.
+When an operator opts in (`VAULT_ATTEST=1` + a funded hot wallet), scan verdicts can be attested on-chain via [EAS](https://attest.sh) on Base — currently **Base Sepolia** (testnet); Base mainnet is pending. Each MCP server then accumulates a public, append-only reputation score any agent can query before connecting. Off by default — no chain dependency for using the proxy.
 
 > A continuous attestation feed and public reputation registry are planned for **v0.3**. The proxy supports opt-in attestation today for operators who want it; the always-on hosted attester ships alongside v0.3 once we have real install traffic to back the numbers.
 
@@ -325,7 +325,7 @@ npx --package=@aimcpvault/mcp-proxy@next vault-check --json | jq .
 
 A standalone `vault-check` binary (Homebrew tap, curl-piped install script) is planned for **v0.3** once we ship signed releases on GitHub.
 
-Reputation comes from EAS attestations on Base, aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer). The opt-in attestation path is documented above under "Optional: on-chain attestation"; a continuous public feed lands with v0.3.
+Reputation comes from EAS attestations on Base (currently Base Sepolia testnet; mainnet pending), aggregated across every Vault deployment that scans the same server. Score range 0–1000 (higher = safer). The opt-in attestation path is documented above under "Optional: on-chain attestation"; a continuous public feed lands with v0.3.
 
 ### Add a reputation badge to your MCP server's README
 
@@ -474,9 +474,9 @@ pnpm --filter @vaultmcp/eval run eval -- --set both
 
 Outputs land in `packages/eval/results/eval-<timestamp>.{md,json}`. Each run prints TPR, FPR, per-category breakdown, per-layer attribution, latency percentiles, and the worst false negatives and false positives by severity.
 
-The holdout dataset lives at `packages/eval/datasets/holdout-attacks/` — 188 entries across `published-papers`, `garak-probes`, `blog-pocs`, `owasp-llm`, `encoded-payloads`, `multi-turn`, and `roleplay-jailbreak`. The benign dataset (110 entries) lives at `packages/eval/datasets/benign/`. Both have `MANIFEST.md` files describing provenance.
+The headline numbers come from the v2 holdout, constructed after detection code was frozen: `packages/eval/datasets/holdout-v2-novel/` (50 novel attacks) + `packages/eval/datasets/holdout-v2-paraphrase/` (30 paraphrased attacks) = 80 attacks, plus `packages/eval/datasets/benign-v2/` (100 benign entries). Each has a `MANIFEST.md` describing provenance. (The earlier v1 set, `packages/eval/datasets/holdout-attacks-burned-v1/`, is retired — it was used to motivate contaminated work; see the postmortem.)
 
-**Operators are encouraged to author their own attacks and submit pull requests.** Add a new file under `packages/eval/datasets/holdout-attacks/` following the existing JSON schema, update the `MANIFEST.md`, and open a PR. The harness picks new files up automatically.
+**Operators are encouraged to author their own attacks and submit pull requests.** Add a new file under `packages/eval/datasets/holdout-v2-novel/` following the existing JSON schema, update the `MANIFEST.md`, and open a PR. The harness picks new files up automatically.
 
 The self red-team (`packages/eval/red-team/`) is the other half of the honest-eval story: 38 hand-crafted bypass attempts, 9 of which still pass L1+L2 after our P2 fixes. They are categorized in [`packages/LIMITATIONS.md`](packages/LIMITATIONS.md).
 
