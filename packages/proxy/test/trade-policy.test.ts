@@ -20,9 +20,14 @@ function cfg(over: Partial<TradePolicyConfig> = {}): TradePolicyConfig {
     approvePatterns: [/approve/i, /allowance/i],
     recipientKeys: ['recipient', 'to', 'spender'],
     amountKeys: ['amount', 'amountIn', 'value'],
+    tokenKeys: ['symbol', 'token', 'tokenOut'],
     maxApproval: 2n ** 200n,
     maxTradeValue: null,
     maxPerWindow: null,
+    maxValuePerWindow: null,
+    maxValuePerToken: null,
+    breakerThreshold: null,
+    marketHours: null,
     windowMs: 60_000,
     ...over,
   };
@@ -137,6 +142,108 @@ describe('trade policy — velocity limit', () => {
     // Two blocked attempts shouldn't have counted; two good ones still fit.
     expect(decideTradePolicy('execute_swap', good, new TaintStore(), c, rate, 2).action).toBe('allow');
     expect(decideTradePolicy('execute_swap', good, new TaintStore(), c, rate, 3).action).toBe('allow');
+  });
+});
+
+describe('trade policy — cumulative value per window', () => {
+  const c = cfg({ maxValuePerWindow: 1000n, windowMs: 1000 });
+
+  it('blocks the swap that pushes cumulative value over the cap', () => {
+    const rate = new TradeRateState();
+    const call = (amt: string, now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER, amountIn: amt }, new TaintStore(), c, rate, now);
+    expect(call('600', 0).action).toBe('allow'); // 600 total
+    expect(call('300', 100).action).toBe('allow'); // 900 total
+    const d = call('200', 200); // would be 1100 → over 1000
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/per-window cap/);
+  });
+
+  it('refills as older value ages out of the window', () => {
+    const rate = new TradeRateState();
+    const call = (amt: string, now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER, amountIn: amt }, new TaintStore(), c, rate, now);
+    call('900', 0);
+    expect(call('900', 200).action).toBe('block'); // 1800 within window
+    expect(call('900', 1300).action).toBe('allow'); // first aged out
+  });
+});
+
+describe('trade policy — per-token exposure cap', () => {
+  const c = cfg({ maxValuePerToken: 1000n, windowMs: 1000 });
+
+  it('caps value into one token but allows a different token', () => {
+    const rate = new TradeRateState();
+    const call = (sym: string, amt: string, now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER, symbol: sym, amountIn: amt }, new TaintStore(), c, rate, now);
+    expect(call('AAPL', '900', 0).action).toBe('allow');
+    const over = call('AAPL', '200', 100); // 1100 into AAPL
+    expect(over.action).toBe('block');
+    expect(over.reason).toMatch(/per-token cap/);
+    // A different token is unaffected by AAPL's exposure.
+    expect(call('TSLA', '900', 100).action).toBe('allow');
+  });
+});
+
+describe('trade policy — circuit breaker', () => {
+  const c = cfg({ breakerThreshold: 3, windowMs: 1000 });
+
+  it('halts all trades after N consecutive blocks, then cools down', () => {
+    const rate = new TradeRateState();
+    const bad = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: ATTACKER }, new TaintStore(), c, rate, now);
+    const good = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, rate, now);
+
+    expect(bad(0).reason).toMatch(/not in the trade allowlist/); // block #1
+    expect(bad(1).reason).toMatch(/not in the trade allowlist/); // block #2
+    expect(bad(2).reason).toMatch(/not in the trade allowlist/); // block #3 → trips
+    // Now even a legitimate, allowlisted swap is halted by the open breaker.
+    const halted = good(3);
+    expect(halted.action).toBe('block');
+    expect(halted.reason).toMatch(/circuit breaker open/);
+    // After the cooldown window with no new blocks, trading resumes.
+    expect(good(1100).action).toBe('allow');
+  });
+
+  it('a single allowed trade resets the consecutive-block count', () => {
+    const rate = new TradeRateState();
+    const bad = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: ATTACKER }, new TaintStore(), c, rate, now);
+    const good = (now: number) =>
+      decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, rate, now);
+    bad(0);
+    bad(1);
+    expect(good(2).action).toBe('allow'); // resets the counter
+    // Two more blocks is only 2 consecutive → breaker stays closed.
+    bad(3);
+    expect(bad(4).reason).toMatch(/not in the trade allowlist/);
+    expect(good(5).action).toBe('allow');
+  });
+});
+
+describe('trade policy — market hours', () => {
+  // 13:30–20:00 UTC, weekdays.
+  const c = cfg({ marketHours: { startMin: 13 * 60 + 30, endMin: 20 * 60 } });
+  const at = (iso: string) => new Date(iso).getTime();
+
+  it('allows a swap during market hours on a weekday', () => {
+    // 2026-07-20 is a Monday. 15:00 UTC is inside the window.
+    const d = decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, undefined, at('2026-07-20T15:00:00Z'));
+    expect(d.action).toBe('allow');
+  });
+
+  it('blocks a swap before the open on a weekday', () => {
+    const d = decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, undefined, at('2026-07-20T12:00:00Z'));
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/market is closed/);
+  });
+
+  it('blocks a swap on the weekend even during window hours', () => {
+    // 2026-07-19 is a Sunday.
+    const d = decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, undefined, at('2026-07-19T15:00:00Z'));
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/market is closed/);
   });
 });
 

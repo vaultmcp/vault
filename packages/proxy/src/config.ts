@@ -207,6 +207,13 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     'allowance',
     'approvalAmount',
   ]);
+  const tokenKeys = csvList(process.env.VAULT_TRADE_TOKEN_KEYS, [
+    'symbol',
+    'token',
+    'tokenOut',
+    'asset',
+    'ticker',
+  ]);
 
   const bigintEnv = (raw: string | undefined, def: bigint | null): bigint | null => {
     if (!raw || !/^\d+$/.test(raw.trim())) return def;
@@ -219,10 +226,18 @@ function loadTradePolicyConfig(): TradePolicyConfig {
 
   const maxApproval = bigintEnv(process.env.VAULT_TRADE_MAX_APPROVAL, 2n ** 200n) ?? 2n ** 200n;
   const maxTradeValue = bigintEnv(process.env.VAULT_TRADE_MAX_VALUE, null);
+  const maxValuePerWindow = bigintEnv(process.env.VAULT_TRADE_MAX_VALUE_PER_WINDOW, null);
+  const maxValuePerToken = bigintEnv(process.env.VAULT_TRADE_MAX_VALUE_PER_TOKEN, null);
 
   const rawPerWindow = process.env.VAULT_TRADE_MAX_PER_WINDOW;
   const maxPerWindow =
     rawPerWindow && /^\d+$/.test(rawPerWindow.trim()) ? Number.parseInt(rawPerWindow.trim(), 10) : null;
+
+  const rawBreaker = process.env.VAULT_TRADE_BREAKER_THRESHOLD;
+  const breakerThreshold =
+    rawBreaker && /^\d+$/.test(rawBreaker.trim()) ? Number.parseInt(rawBreaker.trim(), 10) : null;
+
+  const marketHours = parseMarketHours(process.env.VAULT_TRADE_MARKET_HOURS);
   const windowMs = positiveInt(process.env.VAULT_TRADE_WINDOW_MS, 60_000);
 
   return {
@@ -233,11 +248,30 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     approvePatterns,
     recipientKeys,
     amountKeys,
+    tokenKeys,
     maxApproval,
     maxTradeValue,
     maxPerWindow,
+    maxValuePerWindow,
+    maxValuePerToken,
+    breakerThreshold,
+    marketHours,
     windowMs,
   };
+}
+
+/// Parse "HH:MM-HH:MM" (UTC) into minutes-of-day. Returns null on anything malformed,
+/// which leaves the market always open.
+function parseMarketHours(raw: string | undefined): { startMin: number; endMin: number } | null {
+  if (!raw) return null;
+  const m = raw.trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const [sh, sm, eh, em] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+  if (sh > 23 || eh > 23 || sm > 59 || em > 59) return null;
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  if (endMin <= startMin) return null;
+  return { startMin, endMin };
 }
 
 function positiveInt(raw: string | undefined, def: number): number {
