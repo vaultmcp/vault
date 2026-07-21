@@ -61,10 +61,12 @@ function loadAttestationConfig(): AttestationConfig {
     (process.env.VAULT_THREAT_RECORD_SCHEMA as Hex | undefined) ?? defaults?.threatRecordSchema;
   const vaultReputation =
     (process.env.VAULT_REPUTATION_CONTRACT as Hex | undefined) ?? defaults?.vaultReputation;
+  // Optional — trade attestation stays off until this schema UID is set, independent of scans.
+  const tradeReceiptSchema = process.env.VAULT_TRADE_RECEIPT_SCHEMA as Hex | undefined;
 
   const addresses =
     eas && scanReceiptSchema && threatRecordSchema
-      ? { eas, scanReceiptSchema, threatRecordSchema, vaultReputation }
+      ? { eas, scanReceiptSchema, threatRecordSchema, tradeReceiptSchema, vaultReputation }
       : undefined;
 
   const batchSize = positiveInt(process.env.VAULT_ATTEST_BATCH, 50);

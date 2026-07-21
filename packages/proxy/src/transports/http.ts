@@ -28,6 +28,7 @@ import { createAuditLogger, preview, type AuditLogger } from '../audit/index.js'
 import {
   createAttestationClient,
   createScanReporter,
+  emitTradeReceipt,
   type AttestationClient,
   type ScanReporter,
 } from '../attestation/index.js';
@@ -160,6 +161,10 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
           decideCapability(toolName, toolArgs, taint, config.capability),
           decideTradePolicy(toolName, toolArgs, taint, config.tradePolicy, tradeRate),
         );
+        // Guarded-trade receipt (on-chain), when trade attestation is configured.
+        if (attestClient.enabled && config.tradePolicy.enabled && config.attestation.addresses?.tradeReceiptSchema) {
+          emitTradeReceipt(attestClient, config.tradePolicy, upstreamUrl, toolName, toolArgs, decision);
+        }
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
             type: 'capability',

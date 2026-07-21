@@ -29,6 +29,7 @@ import {
 import {
   createAttestationClient,
   createScanReporter,
+  emitTradeReceipt,
   type AttestationClient,
   type ScanReporter,
 } from '../attestation/index.js';
@@ -178,6 +179,11 @@ export function startProxy(cmd: string, args: string[]): void {
           decideCapability(name, params?.arguments, taint, config.capability),
           decideTradePolicy(name, params?.arguments, taint, config.tradePolicy, tradeRate),
         );
+        // Guarded-trade receipt: if this is a trading action and trade attestation is on,
+        // emit a signed on-chain receipt of what the guard decided. No-op otherwise.
+        if (attestClient.enabled && config.tradePolicy.enabled && config.attestation.addresses?.tradeReceiptSchema) {
+          emitTradeReceipt(attestClient, config.tradePolicy, serverIdentifier, name, params?.arguments, decision);
+        }
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
             type: 'capability',
