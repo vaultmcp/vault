@@ -55,6 +55,27 @@ VAULT_TRADE_GUARD=1 VAULT_TRADE_ALLOWLIST=$RH_WALLET_ADDRESS \
 With `VAULT_TRADE_GUARD=1`, a swap whose recipient isn't your allowlisted wallet — or that
 was tainted by a poisoned tool response — is blocked before it broadcasts. That's the demo.
 
+## Simulate before sign
+
+In live mode, `execute_swap` runs the concrete, signable transaction against the chain
+(`eth_simulateV1` via viem) and checks what the recipient would **actually** receive before
+it broadcasts. This is the layer past the firewall: the firewall blocks a swap for what it
+*says* (bad recipient, over a limit), the preview blocks it for what it *would do*. A swap
+that reverts, under-delivers below your `minAmountOut` floor, or comes back far below the
+quoted amount (a sandwich / rigged router) never gets signed.
+
+On by default in live mode. Configure with:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `RH_PREVIEW` | on | `0` disables the pre-broadcast simulation. |
+| `RH_PREVIEW_STRICT` | off | `1` blocks when the RPC can't simulate, instead of warning and proceeding. |
+| `RH_PREVIEW_MAX_DRIFT_BPS` | `200` | Block if the simulated output is more than this far (basis points) below the quote. `0` disables the drift check. |
+
+If the RPC doesn't support `eth_simulateV1`, the preview reports "could not simulate" and
+(unless `RH_PREVIEW_STRICT=1`) proceeds — it never blocks a legitimate trade just because
+simulation was unavailable.
+
 ## Steps
 
 - [ ] Get a free Uniswap API key
