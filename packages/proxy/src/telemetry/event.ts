@@ -13,6 +13,13 @@ interface BaseEvent {
   id: string;
   ts: number;
   installId: string;
+  /**
+   * Provenance tag, set from VAULT_TELEMETRY_SOURCE. Omitted for organic traffic;
+   * set to e.g. "seed" by the launch-day seeding script so the feed UI can label
+   * bring-up scans as demo traffic rather than passing them off as live detections.
+   * Never identifying — a free-form label, not PII.
+   */
+  source?: string;
 }
 
 export interface DetectionEvent extends BaseEvent {

@@ -49,6 +49,8 @@ export function createReporter(
   }
 
   const installId = resolveInstallId();
+  // Optional provenance tag (e.g. "seed"). Trimmed; empty → omitted.
+  const source = process.env.VAULT_TELEMETRY_SOURCE?.trim() || undefined;
   let buffer: TelemetryEvent[] = [];
   let timer: NodeJS.Timeout | null = null;
   let inFlight: Promise<void> | null = null;
@@ -101,6 +103,7 @@ export function createReporter(
         id: newId(),
         ts: Date.now(),
         installId,
+        ...(source ? { source } : {}),
       } as TelemetryEvent;
       buffer.push(event);
       if (buffer.length >= config.batchSize) {

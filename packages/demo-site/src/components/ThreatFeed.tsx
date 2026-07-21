@@ -13,6 +13,8 @@ interface FeedEvent {
   action?: 'block' | 'warn';
   status?: 'first-seen' | 'unchanged' | 'drift';
   contentHash?: string;
+  /** Provenance tag from the proxy (e.g. "seed" for launch-day demo scans). */
+  source?: string;
 }
 
 function timeAgo(ts: number, now: number): string {
@@ -51,6 +53,20 @@ function detail(e: FeedEvent): string {
   if (e.type === 'capability') return `tool=${e.toolName ?? 'unknown'}`;
   if (e.type === 'manifest') return e.status === 'drift' ? 'tool manifest changed' : 'manifest unchanged';
   return '';
+}
+
+/// Labels bring-up/demo scans so they aren't mistaken for live attacker traffic.
+/// See docs/threat-feed.md for what "seed" means (real scans, public-corpus payloads).
+function SeededTag({ event }: { event: FeedEvent }) {
+  if (event.source !== 'seed') return null;
+  return (
+    <span
+      className="ml-2 shrink-0 rounded-sm border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-widish text-dim"
+      title="Demo scan: a real detection against a public-corpus payload during bring-up, not live attacker traffic."
+    >
+      demo
+    </span>
+  );
 }
 
 export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
@@ -107,7 +123,10 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
             events.map((e) => (
               <li key={e.id} className="px-4 py-3 font-mono text-xs">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={`${rowAccent(e)} font-medium`}>{label(e)}</span>
+                  <span className="flex items-baseline">
+                    <span className={`${rowAccent(e)} font-medium`}>{label(e)}</span>
+                    <SeededTag event={e} />
+                  </span>
                   <span className="shrink-0 text-dim">{timeAgo(e.ts, now)}</span>
                 </div>
                 <div className="mt-1 break-words text-ink">{detail(e)}</div>
@@ -143,7 +162,7 @@ export function ThreatFeed({ collectorUrl }: { collectorUrl: string }) {
               {events.map((e) => (
                 <tr key={e.id} className="border-t border-line">
                   <td className="px-4 py-2 text-dim">{timeAgo(e.ts, now)}</td>
-                  <td className={`px-4 py-2 ${rowAccent(e)}`}>{label(e)}</td>
+                  <td className={`px-4 py-2 ${rowAccent(e)}`}>{label(e)}<SeededTag event={e} /></td>
                   <td className="px-4 py-2">{detail(e)}</td>
                   <td className="px-4 py-2 text-dim">
                     {e.contentHash ? <code>{e.contentHash.slice(0, 12)}…</code> : ''}
