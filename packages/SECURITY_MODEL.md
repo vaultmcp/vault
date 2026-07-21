@@ -45,11 +45,13 @@ gate on sensitive tool calls.
     steering a trading agent's `execute_swap`/`approve` to an attacker address,
     or into an unlimited approval) — **trade guard** (off by default; enable
     with `VAULT_TRADE_GUARD=1`). A specialized capability gate for trading
-    tools: it extracts the recipient/spender and approval amount and enforces
-    an allowlist, blocks a recipient sourced from tool output (tainted), and
-    blocks unlimited approvals to non-allowlisted spenders. A second line of
-    defense that holds even when a novel injection slips past the content
-    scanner. See "Trade guard configuration" below.
+    tools: it extracts the recipient/spender, amount, and token and enforces a
+    spending firewall — recipient allowlist, taint on the recipient, unlimited-
+    approval blocking, per-trade and cumulative (overall + per-token) value caps,
+    a velocity limit, a circuit breaker that halts the agent after repeated
+    blocked trades, and market-hours enforcement for scheduled (tokenized-stock)
+    assets. A second line of defense that holds even when a novel injection slips
+    past the content scanner. See "Trade guard configuration" below.
 11. **Silent tool-manifest drift** (an upstream MCP server adds, removes, or
     changes a tool between sessions) — **manifest verification** (on by
     default; `VAULT_MANIFEST_CHECK=on`).
@@ -67,16 +69,24 @@ Off by default. All are environment variables read at startup.
 | `VAULT_TRADE_APPROVE_TOOLS` | `approve,allowance,permit` | Regexes matching approval-like tool names. |
 | `VAULT_TRADE_RECIPIENT_KEYS` | `recipient,to,spender,destination,dest,receiver` | Argument keys carrying the recipient/spender address. |
 | `VAULT_TRADE_AMOUNT_KEYS` | `amount,amountIn,value,allowance,approvalAmount` | Argument keys carrying a swap/approval amount. |
+| `VAULT_TRADE_TOKEN_KEYS` | `symbol,token,tokenOut,asset,ticker` | Argument keys identifying the token being traded (for the per-token cap). |
 | `VAULT_TRADE_MAX_APPROVAL` | `2**200` | Approvals at or above this count as unlimited. |
 | `VAULT_TRADE_MAX_VALUE` | unset | Per-trade value cap: a swap at or above this amount is blocked, even to an allowlisted recipient. Unset = no cap. |
+| `VAULT_TRADE_MAX_VALUE_PER_WINDOW` | unset | Cumulative value that may be moved within the window across all swaps. The swap that would push the running total over the cap is blocked. Unset = no cap. |
+| `VAULT_TRADE_MAX_VALUE_PER_TOKEN` | unset | Same as above but tracked per token (from `TOKEN_KEYS`), so exposure to any single asset is bounded. Unset = no cap. |
 | `VAULT_TRADE_MAX_PER_WINDOW` | unset | Velocity limit: max trades per window (anti drain-loop). Hard-blocked trades don't consume the budget. Unset = no limit. |
-| `VAULT_TRADE_WINDOW_MS` | `60000` | Velocity window, in milliseconds. |
+| `VAULT_TRADE_BREAKER_THRESHOLD` | unset | Circuit breaker: after this many consecutive blocked trades, halt *all* trading until a full quiet window passes. A single allowed trade resets the count. Unset = off. |
+| `VAULT_TRADE_MARKET_HOURS` | unset | `HH:MM-HH:MM` (UTC, weekdays only). Trades outside the window — or on weekends — are blocked. For agents holding tokenized stocks that only trade on a schedule. Unset = always open. |
+| `VAULT_TRADE_WINDOW_MS` | `60000` | Rolling window for velocity, cumulative-value, and breaker-cooldown, in milliseconds. |
 
-Together these form a **spending policy**: allowlist + taint govern *who* receives
-funds, `MAX_APPROVAL` caps approvals, `MAX_VALUE` caps *how much* per trade, and
-`MAX_PER_WINDOW` caps *how fast*. The trade guard composes with the generic
-capability firewall — both run on every `tools/call` and the stronger decision
-(block > warn > allow) wins.
+Together these form a **spending firewall**: allowlist + taint govern *who* receives
+funds; `MAX_APPROVAL` caps approvals; `MAX_VALUE` caps *how much* per trade;
+`MAX_VALUE_PER_WINDOW` and `MAX_VALUE_PER_TOKEN` cap *how much in total* (overall and
+per asset); `MAX_PER_WINDOW` caps *how fast*; `BREAKER_THRESHOLD` *halts the agent* once
+it starts throwing blocked trades in a row (a compromised or looping agent stops instead
+of hammering the guard); and `MARKET_HOURS` refuses trades when the market is closed. The
+trade guard composes with the generic capability firewall — both run on every `tools/call`
+and the stronger decision (block > warn > allow) wins.
 
 ## Threats Vault does NOT defend against
 

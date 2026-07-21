@@ -107,4 +107,31 @@ describe('trade guard — end-to-end through the proxy', () => {
     const r = await proxy.next();
     expect(r.result.content[0].text).not.toMatch(/VAULT_CAPABILITY_BLOCKED/);
   }, 30000);
+
+  it('circuit breaker: after repeated blocks, even a good swap is halted (per-session state)', async () => {
+    // Threshold 2 → the third bad call trips the breaker, and the following good call is halted.
+    proxy = startProxy({
+      VAULT_TRADE_GUARD: '1',
+      VAULT_TRADE_ALLOWLIST: GOOD,
+      VAULT_TRADE_BREAKER_THRESHOLD: '2',
+    });
+    const swap = (id: number, recipient: string) =>
+      proxy.send({
+        jsonrpc: '2.0',
+        id,
+        method: 'tools/call',
+        params: { name: 'execute_swap', arguments: { recipient, amount: '1' } },
+      });
+
+    swap(1, ATTACKER);
+    await proxy.next(); // block #1
+    swap(2, ATTACKER);
+    await proxy.next(); // block #2 → breaker trips
+
+    // The breaker is open: a legitimate, allowlisted swap is now halted too.
+    swap(3, GOOD);
+    const halted = await proxy.next();
+    expect(halted.result.isError).toBe(true);
+    expect(halted.result.content[0].text).toMatch(/circuit breaker open/);
+  }, 30000);
 });
