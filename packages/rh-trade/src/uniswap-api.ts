@@ -80,7 +80,25 @@ async function post<T>(path: string, body: unknown, fetchImpl: FetchLike): Promi
 }
 
 export function getQuote(req: QuoteRequest, fetchImpl: FetchLike = fetch): Promise<QuoteResponse> {
-  return post<QuoteResponse>('/quote', { type: 'EXACT_INPUT', ...req }, fetchImpl);
+  // The validated request shape (confirmed against the live API returning a filled quote):
+  // richer routing params + chain ids sent as strings.
+  const body = {
+    type: req.type ?? 'EXACT_INPUT',
+    tokenIn: req.tokenIn,
+    tokenOut: req.tokenOut,
+    tokenInChainId: String(req.tokenInChainId),
+    tokenOutChainId: String(req.tokenOutChainId),
+    amount: req.amount,
+    swapper: req.swapper,
+    routingPreference: 'BEST_PRICE',
+    autoSlippage: 'DEFAULT',
+    spreadOptimization: 'EXECUTION',
+    urgency: 'urgent',
+    permitAmount: 'FULL',
+    generatePermitAsTransaction: false,
+    ...(req.slippageTolerance != null ? { slippageTolerance: req.slippageTolerance } : {}),
+  };
+  return post<QuoteResponse>('/quote', body, fetchImpl);
 }
 
 export function getSwap(

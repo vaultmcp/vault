@@ -61,3 +61,16 @@ was tainted by a poisoned tool response — is blocked before it broadcasts. Tha
 - [ ] Get one tokenized-equity address (+ confirm the USDG address for your chain)
 - [ ] Dry-run: confirm `get_quote` returns a live quote and `execute_swap` builds a tx (no broadcast)
 - [ ] Live: fund a wallet with ~$2 USDG, run one guarded swap, record it
+
+## Which pair routes (verified 2026-07-20)
+
+Using the validated quote shape (`routingPreference: BEST_PRICE`, `autoSlippage: DEFAULT`,
+`urgency`, `permitAmount`, chain ids sent as the string `"4663"`), the Uniswap Trading API on
+Robinhood Chain routes **ETH↔WETH** (HTTP 200, `routing: WRAP`/`UNWRAP`). USDG→WETH and
+USDG→tAAPL return `404 "No quotes available"` at test time — tokenized stocks trade 24/5 via
+RFQ (the equities market was closed), and USDG had no AMM route then; retry during US market
+hours for stock-token quotes. The `rh-trade` → Vault trade-guard end-to-end
+(`test/e2e-guard.test.ts`) is proven on the routable ETH→WETH pair: a swap to a
+non-allowlisted recipient is blocked with `[VAULT_CAPABILITY_BLOCKED]`, while an allowlisted
+recipient passes the guard and `execute_swap` builds a signable swap tx via the API (dry-run,
+not broadcast).
