@@ -16,8 +16,12 @@ Three MCP tools mirroring a USDG → tokenized-equity swap flow on Robinhood Cha
 | Tool | Args | What it does |
 | --- | --- | --- |
 | `get_token_metadata` | `symbol` | Reads ERC-20 `name`/`symbol`/`decimals` for the token. |
-| `get_quote` | `symbol`, `amountIn` | Quotes `amountIn` USDG → token via a Uniswap QuoterV2-style quoter. |
-| `execute_swap` | `symbol`, `amountIn`, `recipient`, `minAmountOut` | Builds a swap tx. **Dry-run by default** — returns `{ to, data, value }` without broadcasting. |
+| `get_quote` | `symbol`, `amountIn` | Quotes `amountIn` USDG → token via the **Uniswap Trading API**. |
+| `execute_swap` | `symbol`, `amountIn`, `recipient`, `minAmountOut` | `/quote` → `/swap` via the Uniswap Trading API. **Dry-run by default** — builds a signable tx without broadcasting. |
+
+Swaps route through the **Uniswap Trading API** (the pattern real products use on Robinhood
+Chain) — no `QuoterV2`/`SwapRouter` addresses to wire, just a free `UNISWAP_API_KEY`. See
+[`RH-INTEGRATION.md`](../../RH-INTEGRATION.md) for the full runbook.
 
 ## Wire framing (NDJSON JSON-RPC 2.0)
 
@@ -52,23 +56,25 @@ response for prompt injection before it reaches the agent.
 `execute_swap` **defaults to dry-run**: it builds the transaction with viem and
 returns the unsigned `{ to, data, value }` **without broadcasting**.
 
-It broadcasts **only** when *all three* are true:
+It broadcasts **only** when *all* are true:
 
 1. `RH_LIVE=1`
 2. `PRIVATE_KEY` is set in the environment (never hardcoded anywhere in this package)
-3. A real, non-placeholder RPC URL / chain is configured (see below)
+3. `UNISWAP_API_KEY` is set (free, from developers.uniswap.org/dashboard)
+4. A real chain is configured (`RH_CHAIN_RPC_URL`, `RH_CHAIN_ID`, `RH_USDG_ADDRESS`)
 
-If any is missing, the tool returns `mode: "dry-run"`, `broadcast: false`, `txHash: null`
-and a `note` explaining why.
+If any is missing, `execute_swap` returns `mode: "dry-run"`, `broadcast: false`,
+`txHash: null` and a `note` explaining why. With no key/chain it makes **no network call
+at all**; with a key it builds the real signable tx via the API but still won't broadcast.
 
-## ⚠ Placeholder-params caveat
+## ⚠ Configuration caveat
 
-`src/chain.ts` ships **placeholder** Robinhood Chain parameters — the RPC URL, chain
-id, and the USDG / quoter / router addresses are **made-up stand-ins**, not real. This
-lets the server type-check and run fully offline in dry-run mode.
+`src/chain.ts` ships **empty** Robinhood Chain parameters by default, so the server
+type-checks and runs fully offline in dry-run mode. There are **no DEX addresses to
+configure** — swaps route through the Uniswap Trading API, which needs only a free
+`UNISWAP_API_KEY`. See [`RH-INTEGRATION.md`](../../RH-INTEGRATION.md).
 
-Because of this, **live mode will not do anything useful until you fill in real
-values** — a broadcast against placeholder addresses would just fail. Every param is
+Until you supply real values, **live mode does nothing** — every param is
 env-overridable (no source edits needed):
 
 | Env var | Overrides |

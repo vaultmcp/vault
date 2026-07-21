@@ -6,9 +6,10 @@
 /// tx here and never broadcasts, because live mode requires RH_LIVE=1 + PRIVATE_KEY
 /// + a non-placeholder RPC — none of which are set in tests.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { handle } from '../src/server.js';
-import { TOOLS, isPlaceholderChain } from '../src/tools.js';
+import { TOOLS, isPlaceholderChain, executeSwap } from '../src/tools.js';
+import type { ChainConfig } from '../src/chain.js';
 
 describe('environment', () => {
   it('runs against the placeholder chain (offline)', () => {
@@ -66,7 +67,8 @@ describe('execute_swap (dry-run)', () => {
       mode: string;
       broadcast: boolean;
       txHash: string | null;
-      tx: { to: string; data: string; value: string };
+      tx: unknown;
+      request: { recipient: string };
     } } }).result;
 
     expect(result.isError).toBe(false);
@@ -74,25 +76,24 @@ describe('execute_swap (dry-run)', () => {
     expect(swap.mode).toBe('dry-run');
     expect(swap.broadcast).toBe(false);
     expect(swap.txHash).toBeNull();
-    // A real tx object was still built.
-    expect(swap.tx.to).toMatch(/^0x[0-9a-fA-F]{40}$/);
-    expect(swap.tx.data).toMatch(/^0x[0-9a-fA-F]+$/);
-    expect(swap.tx.value).toBe('0');
+    // Network-free dry-run (no UNISWAP_API_KEY / unconfigured chain): no tx built, no call made.
+    expect(swap.tx).toBeNull();
+    expect(swap.request.recipient).toBe('0x000000000000000000000000000000000000dEaD');
   });
 });
 
 describe('get_quote (offline)', () => {
-  it('returns a placeholder quote with null output and no network call', async () => {
+  it('returns a dry quote with no live routing and no network call', async () => {
     const res = await handle({
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
       params: { name: 'get_quote', arguments: { symbol: 'tAAPL', amountIn: '1000' } },
     });
-    const swap = (res as { result: { structuredContent: { amountOutWei: string | null; placeholder: boolean } } })
+    const swap = (res as { result: { structuredContent: { quote: unknown; placeholder: boolean } } })
       .result.structuredContent;
     expect(swap.placeholder).toBe(true);
-    expect(swap.amountOutWei).toBeNull();
+    expect(swap.quote).toBeNull();
   });
 });
 
@@ -106,5 +107,47 @@ describe('protocol errors', () => {
   it('returns no response for a notification (no id)', async () => {
     const res = await handle({ jsonrpc: '2.0', method: 'notifications/initialized' });
     expect(res).toBeNull();
+  });
+});
+
+describe('execute_swap via Uniswap Trading API (mocked, still dry-run)', () => {
+  const cfg: ChainConfig = {
+    name: 'Robinhood Chain',
+    rpcUrl: 'https://rpc.example',
+    chainId: 4663,
+    usdg: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168',
+  };
+
+  it('calls /quote then /swap and returns the built tx without broadcasting', async () => {
+    const prevKey = process.env.UNISWAP_API_KEY;
+    const prevTok = process.env.RH_TOKEN_TAAPL;
+    process.env.UNISWAP_API_KEY = 'test-key';
+    process.env.RH_TOKEN_TAAPL = '0x1111111111111111111111111111111111111111';
+    delete process.env.RH_LIVE; // ensure no broadcast
+    try {
+      const calls: string[] = [];
+      const fetchMock = vi.fn(async (url: any) => {
+        calls.push(String(url));
+        const body = String(url).endsWith('/quote')
+          ? { quote: { id: 'q1' }, permitData: null }
+          : { swap: { to: '0xrouter', from: '0xme', data: '0xabc', value: '0', chainId: 4663 } };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }) as unknown as typeof fetch;
+
+      const res = await executeSwap(
+        { symbol: 'tAAPL', amountIn: '1', recipient: '0x2222222222222222222222222222222222222222', minAmountOut: '0' },
+        cfg,
+        fetchMock,
+      );
+      expect(calls.some((u) => u.endsWith('/quote'))).toBe(true);
+      expect(calls.some((u) => u.endsWith('/swap'))).toBe(true);
+      expect(res.mode).toBe('dry-run');
+      expect(res.broadcast).toBe(false);
+      expect(res.tx?.to).toBe('0xrouter');
+      expect(res.txHash).toBeNull();
+    } finally {
+      if (prevKey === undefined) delete process.env.UNISWAP_API_KEY; else process.env.UNISWAP_API_KEY = prevKey;
+      if (prevTok === undefined) delete process.env.RH_TOKEN_TAAPL; else process.env.RH_TOKEN_TAAPL = prevTok;
+    }
   });
 });

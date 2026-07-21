@@ -1,49 +1,35 @@
 /// Robinhood Chain connection parameters for the trading MCP server.
 ///
-/// ⚠ THESE ARE PLACEHOLDERS. Robinhood Chain is an Arbitrum Orbit L2 that reached
-/// mainnet on 2026-07-01. The RPC URL and every contract address below are made-up
-/// stand-ins so the code type-checks and runs in DRY-RUN mode. They are NOT real.
-/// Fill them in from the official Robinhood Chain docs (testnet first) before
-/// pointing this server at a live network or enabling live swaps.
+/// Swaps route through the Uniswap Trading API (see uniswap-api.ts), so we do NOT need
+/// DEX contract addresses here — the API handles routing and the Universal Router. What
+/// we still need is: the chain id, an RPC (for ERC-20 metadata reads and broadcasting),
+/// and the USDG address (the swap input).
 ///
-/// Every field is env-overridable so an operator can supply real values without
-/// editing source.
+/// Robinhood Chain mainnet is chainId 4663 (the Trading API supports RH mainnet; a
+/// testnet chain id 46630 exists but the Trading API does not list it). Every field is
+/// env-overridable. Defaults are intentionally empty so nothing runs live by accident —
+/// supply real values via env to enable quotes and swaps.
 
 export interface ChainConfig {
   name: string;
-  /** JSON-RPC endpoint. Fill from https://robinhood.com/us/en/chain/ — testnet first. PLACEHOLDER. */
+  /** JSON-RPC endpoint — used for ERC-20 metadata reads and (in live mode) broadcasting. */
   rpcUrl: string;
-  /** EVM chain id. PLACEHOLDER (0 until filled). */
+  /** EVM chain id. 4663 = Robinhood Chain mainnet. 0 = unconfigured (placeholder). */
   chainId: number;
-  /** USDG — the chain's native yield-bearing stablecoin, used as the swap input. PLACEHOLDER address. */
-  usdg: `0x${string}`;
-  /** Uniswap-style quoter (QuoterV2). Used by get_quote. PLACEHOLDER address. */
-  quoter: `0x${string}`;
-  /** Uniswap-style swap router. Used by execute_swap to build calldata. PLACEHOLDER address. */
-  router: `0x${string}`;
-}
-
-/// A syntactically-valid but obviously-fake placeholder address. Zero-filled with a
-/// short tag so it reads as "not real" in logs while still being a valid 20-byte hex.
-function placeholderAddress(tag: string): `0x${string}` {
-  const hex = Buffer.from(tag).toString('hex').slice(0, 40).padEnd(40, '0');
-  return `0x${hex}` as `0x${string}`;
+  /** USDG stablecoin address (swap input). Empty until configured. */
+  usdg: `0x${string}` | '';
 }
 
 export const ROBINHOOD_CHAIN: ChainConfig = {
-  name: process.env.RH_CHAIN_NAME ?? 'Robinhood Chain (testnet, PLACEHOLDER)',
-  // PLACEHOLDER host — resolves to nothing; override with RH_CHAIN_RPC_URL.
-  rpcUrl: process.env.RH_CHAIN_RPC_URL ?? 'https://REPLACE-ME.rpc.robinhood-chain.example',
+  name: process.env.RH_CHAIN_NAME ?? 'Robinhood Chain',
+  rpcUrl: process.env.RH_CHAIN_RPC_URL ?? '',
   chainId: Number(process.env.RH_CHAIN_ID ?? 0),
-  usdg: (process.env.RH_USDG_ADDRESS as `0x${string}` | undefined) ?? placeholderAddress('USDG'),
-  quoter:
-    (process.env.RH_QUOTER_ADDRESS as `0x${string}` | undefined) ?? placeholderAddress('QUOTER'),
-  router:
-    (process.env.RH_ROUTER_ADDRESS as `0x${string}` | undefined) ?? placeholderAddress('ROUTER'),
+  usdg: (process.env.RH_USDG_ADDRESS as `0x${string}` | undefined) ?? '',
 };
 
-/// True only when the RPC URL still points at the placeholder host. Callers use this
-/// to refuse live broadcasts and to annotate quotes as "placeholder network".
+/// True when the chain isn't configured for real use yet (no chain id / RPC / USDG).
+/// Callers use this to run quotes/swaps in a network-free dry-run and to refuse live
+/// broadcasts.
 export function isPlaceholderChain(cfg: ChainConfig = ROBINHOOD_CHAIN): boolean {
-  return cfg.rpcUrl.includes('REPLACE-ME') || cfg.chainId === 0;
+  return cfg.chainId === 0 || cfg.rpcUrl === '' || cfg.usdg === '';
 }
