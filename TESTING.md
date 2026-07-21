@@ -21,6 +21,26 @@ VAULT_TRADE_GUARD=1 VAULT_TRADE_ALLOWLIST=0xYourWallet \
 A recording of step 1 is in [`docs/vault-demo.cast`](docs/vault-demo.cast) (asciinema
 format — `asciinema play docs/vault-demo.cast`).
 
+## What you can test locally (no blockchain, no accounts)
+
+Everything below runs with nothing but Node — **no chain, no wallet, no Robinhood Chain
+connection required.**
+
+| Capability | Works locally? | Needs |
+|---|---|---|
+| 4-layer detection (`demo`, wrapping any MCP server) | ✅ | nothing (L1+L2); an LLM key enables L3 |
+| Trade guard (allowlist / taint / value cap / velocity) | ✅ | nothing — pure policy, no chain |
+| Capability firewall, manifest-drift, scan history, audit log | ✅ | nothing |
+| RH agentic-trading demo (hijack → blocked), CLI + browser | ✅ | repo checkout (`pnpm --filter @vaultmcp/rh-demo demo` / `web`) |
+| RH trading server (`rh-trade`) — quotes + swaps in **dry-run** | ✅ | repo checkout; builds real tx without broadcasting |
+| MCP safety registry (`rh-registry`) query + status page | ✅ | repo checkout |
+| L3 (LLM judge) detection | key/Ollama | an LLM API key **or** local Ollama (degrades to L1+L2 without) |
+| On-chain reputation / attestation | testnet | Base **Sepolia** + a funded wallet (off by default) |
+| **Live** Robinhood Chain trades (real broadcast) | not yet | RH testnet params — pending; dry-run works today |
+
+The only thing you *can't* do locally is broadcast a real transaction to Robinhood Chain —
+and for evaluating a security tool, dry-run is what you'd want anyway.
+
 ## What we'd love feedback on
 
 Three specific things — naming them turns "cool" into usable signal:
