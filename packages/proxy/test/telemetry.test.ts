@@ -217,6 +217,34 @@ describe('createReporter', () => {
     expect(event.contentHash).toBe('abc'); // already hashed by caller
     // Most importantly: nothing resembling raw content should ever leak.
     expect(JSON.stringify(event)).not.toMatch(/IGNORE PREVIOUS INSTRUCTIONS/i);
+    // No provenance tag unless VAULT_TELEMETRY_SOURCE is set.
+    expect(event.source).toBeUndefined();
+  });
+
+  it('tags events with source when VAULT_TELEMETRY_SOURCE is set', async () => {
+    const prev = process.env.VAULT_TELEMETRY_SOURCE;
+    process.env.VAULT_TELEMETRY_SOURCE = 'seed';
+    try {
+      const { fn, calls } = mockOk();
+      const r = createReporter(
+        { enabled: true, url: 'https://collector.example/ingest', batchSize: 1, flushIntervalMs: 10 },
+        fn,
+      );
+      r.send({
+        type: 'detection',
+        layer: 2,
+        verdict: 'malicious',
+        confidence: 0.9,
+        toolName: 'read_file',
+        contentHash: 'abc',
+        patterns: [],
+      });
+      await r.flush();
+      expect(calls[0]!.body.events[0].source).toBe('seed');
+    } finally {
+      if (prev === undefined) delete process.env.VAULT_TELEMETRY_SOURCE;
+      else process.env.VAULT_TELEMETRY_SOURCE = prev;
+    }
   });
 
   it('shutdown() flushes pending events', async () => {

@@ -128,6 +128,7 @@ async function main() {
         VAULT_TELEMETRY_URL: COLLECTOR_INGEST,
         VAULT_TELEMETRY_BATCH: '1',           // flush immediately so panel updates as we go
         VAULT_TELEMETRY_FLUSH_MS: '2000',
+        VAULT_TELEMETRY_SOURCE: 'seed',       // tag events so the feed UI labels them "demo scan"
         VAULT_MODE: 'log',                    // observe, don't block (so the response goes through cleanly)
         NO_COLOR: '1',
       },
