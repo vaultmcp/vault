@@ -33,6 +33,13 @@ import {
   type FetchLike,
   type TransactionRequest,
 } from './uniswap-api.js';
+import {
+  evaluatePreview,
+  viemSimulate,
+  quotedOutput,
+  type SimulateFn,
+  type PreviewVerdict,
+} from './preview.js';
 
 export { isPlaceholderChain, ROBINHOOD_CHAIN } from './chain.js';
 
@@ -157,20 +164,29 @@ export async function getQuote(
 // ---------------------------------------------------------------------------
 
 export interface SwapResult {
-  mode: 'dry-run' | 'broadcast';
+  mode: 'dry-run' | 'broadcast' | 'blocked';
   broadcast: boolean;
   /** The intended swap request (always present). */
   request: { tokenIn: Address | ''; tokenOut: Address | ''; amountInWei: string; recipient: string; chainId: number };
   /** The signable swap transaction from the API — present once a quote is fetched. */
   tx: TransactionRequest | null;
   txHash: Hex | null;
+  /** Simulate-before-sign verdict — present when the preview ran (live mode). */
+  preview?: PreviewVerdict;
   note: string;
+}
+
+function intEnv(raw: string | undefined, def: number): number {
+  if (!raw || !/^\d+$/.test(raw.trim())) return def;
+  const n = Number.parseInt(raw.trim(), 10);
+  return Number.isFinite(n) ? n : def;
 }
 
 export async function executeSwap(
   args: { symbol: string; amountIn: string; recipient: string; minAmountOut: string },
   cfg: ChainConfig = ROBINHOOD_CHAIN,
   fetchImpl: FetchLike = fetch,
+  simulate?: SimulateFn,
 ): Promise<SwapResult> {
   const tokenIn = cfg.usdg;
   const tokenOut = resolveToken(args.symbol, cfg);
@@ -227,6 +243,41 @@ export async function executeSwap(
     };
   }
 
+  // Simulate-before-sign: run the concrete tx against the chain and check what the
+  // recipient would ACTUALLY receive. Refuse to broadcast a swap that reverts, under-
+  // delivers below the floor, or comes back far below the quote. On by default in live
+  // mode; disable with RH_PREVIEW=0.
+  let preview: PreviewVerdict | undefined;
+  if (process.env.RH_PREVIEW !== '0') {
+    const sim = simulate ?? viemSimulate(publicClient(cfg));
+    const { simulatedOut, reverted } = await sim({
+      to: tx.to as Address,
+      data: tx.data as Hex,
+      value: BigInt(tx.value || '0'),
+      account: args.recipient as Address,
+      outputToken: tokenOut as Address,
+    });
+    preview = evaluatePreview({
+      minOut: parseUnits(args.minAmountOut, 18),
+      simulatedOut,
+      reverted,
+      expectedOut: quotedOutput(q.quote),
+      maxDriftBps: intEnv(process.env.RH_PREVIEW_MAX_DRIFT_BPS, 200),
+      strict: process.env.RH_PREVIEW_STRICT === '1',
+    });
+    if (preview.action === 'block') {
+      return {
+        mode: 'blocked',
+        broadcast: false,
+        request,
+        tx,
+        txHash: null,
+        preview,
+        note: `PREVIEW BLOCKED (nothing signed): ${preview.reason}`,
+      };
+    }
+  }
+
   // Live: approve USDG if needed, then broadcast the swap.
   const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
   const wallet = createWalletClient({ account, transport: http(cfg.rpcUrl) });
@@ -250,7 +301,7 @@ export async function executeSwap(
     value: BigInt(tx.value || '0'),
     chain: null,
   });
-  return { mode: 'broadcast', broadcast: true, request, tx, txHash, note: `Broadcast to ${cfg.name}.` };
+  return { mode: 'broadcast', broadcast: true, request, tx, txHash, preview, note: `Broadcast to ${cfg.name}.` };
 }
 
 // ---------------------------------------------------------------------------
