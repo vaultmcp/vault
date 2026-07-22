@@ -29,6 +29,10 @@ const SCAN_RECEIPT_SCHEMA =
 const THREAT_RECORD_SCHEMA =
   'bytes32 contentHash,string mcpServerUrl,string toolName,string category,bytes32 receiptRefUID,uint64 detectedAt';
 
+// Must byte-for-byte match TRADE_PARAMS in packages/proxy/src/attestation/encoder.ts.
+const TRADE_RECEIPT_SCHEMA =
+  'string mcpServerUrl,string toolName,uint8 decision,uint8 reasonCode,bytes32 recipientHash,string token,uint8 valueBucket,uint64 guardedAt';
+
 const ABI = parseAbi([
   'function register(string schema, address resolver, bool revocable) returns (bytes32)',
   'event Registered(bytes32 indexed uid, address indexed registerer, (bytes32 uid, address resolver, bool revocable, string schema) schemaRecord)',
@@ -38,7 +42,7 @@ interface Deployments {
   [network: string]: {
     eas?: Hex;
     schemaRegistry?: Hex;
-    schemas?: { scanReceipt?: Hex; threatRecord?: Hex };
+    schemas?: { scanReceipt?: Hex; threatRecord?: Hex; tradeReceipt?: Hex };
     vaultReputation?: Hex;
     deployedAt?: string;
   };
@@ -74,12 +78,22 @@ async function main(): Promise<void> {
 
   process.stderr.write(`network=${networkArg} chainId=${chain.id} attester=${account.address}\n`);
 
-  const uids: { scanReceipt?: Hex; threatRecord?: Hex } = {};
+  const d = readDeployments();
+  const existing = d[networkArg]?.schemas ?? {};
+  const uids: { scanReceipt?: Hex; threatRecord?: Hex; tradeReceipt?: Hex } = { ...existing };
 
+  // Idempotent: a schema UID is a deterministic hash of (schema, resolver, revocable), so
+  // re-registering an existing one reverts. Skip any we've already recorded — running this
+  // after adding a new schema registers only the new one.
   for (const [name, schema] of [
     ['scanReceipt', SCAN_RECEIPT_SCHEMA],
     ['threatRecord', THREAT_RECORD_SCHEMA],
+    ['tradeReceipt', TRADE_RECEIPT_SCHEMA],
   ] as const) {
+    if (uids[name]) {
+      process.stderr.write(`skipping ${name} (already registered: ${uids[name]})\n`);
+      continue;
+    }
     process.stderr.write(`registering ${name}...\n`);
     const hash = await wallet.writeContract({
       address: SCHEMA_REGISTRY,
@@ -98,12 +112,11 @@ async function main(): Promise<void> {
     process.stderr.write(`  uid=${uid} tx=${hash}\n`);
   }
 
-  const d = readDeployments();
   d[networkArg] = {
     ...(d[networkArg] ?? {}),
     eas: EAS_ADDRESS,
     schemaRegistry: SCHEMA_REGISTRY,
-    schemas: { scanReceipt: uids.scanReceipt!, threatRecord: uids.threatRecord! },
+    schemas: { scanReceipt: uids.scanReceipt!, threatRecord: uids.threatRecord!, tradeReceipt: uids.tradeReceipt! },
     deployedAt: new Date().toISOString(),
   };
   writeDeployments(d);
