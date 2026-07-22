@@ -11,6 +11,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'audit-view': 'src/cli/audit-view.ts',
     check: 'src/cli/check.ts',
+    decide: 'src/cli/decide.ts',
     init: 'src/cli/init.ts',
   },
   format: ['esm'],
