@@ -1,5 +1,7 @@
 # Vault — MCP Prompt Injection Firewall
 
+[![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood)](https://robinhoodchain.blockscout.com/address/0x89bf75bccea833fff371fa300f7c885b5c23f103)
+
 **Site:** [vaultmcp.io](https://vaultmcp.io)  **·**  **X:** [@vaultmcp](https://x.com/vaultmcp)  **·**  **Repo:** [github.com/vaultmcp/vault](https://github.com/vaultmcp/vault)
 
 Vault is a production prompt-injection firewall for MCP. It intercepts every tool response before your agent reads it and scans through four layers of detection (L0 deterministic decoder, L1 heuristics, L2 embedding similarity, L3 LLM judge).
