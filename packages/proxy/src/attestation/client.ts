@@ -5,7 +5,7 @@
 /// Viem is imported lazily inside the chain-call path so that with VAULT_ATTEST=0 no
 /// viem code is loaded. Tests assert this by spying on the chain-submit function.
 
-import { encodeScanReceipt, encodeThreatRecord } from './encoder.js';
+import { encodeScanReceipt, encodeThreatRecord, encodeTradeReceipt } from './encoder.js';
 import type {
   AttestationAddresses,
   AttestationConfig,
@@ -23,6 +23,7 @@ export interface AttestationClient {
   readonly enabled: boolean;
   enqueueScanReceipt(item: Extract<AttestationItem, { kind: 'scan' }>): void;
   enqueueThreatRecord(item: Extract<AttestationItem, { kind: 'threat' }>): void;
+  enqueueTradeReceipt(item: Extract<AttestationItem, { kind: 'trade' }>): void;
   flush(): Promise<void>;
   shutdown(): Promise<void>;
 }
@@ -31,6 +32,7 @@ const NOOP: AttestationClient = {
   enabled: false,
   enqueueScanReceipt() {},
   enqueueThreatRecord() {},
+  enqueueTradeReceipt() {},
   async flush() {},
   async shutdown() {},
 };
@@ -100,6 +102,9 @@ export function createAttestationClient(opts: CreateAttestationClientOpts): Atte
       enqueue(item);
     },
     enqueueThreatRecord(item) {
+      enqueue(item);
+    },
+    enqueueTradeReceipt(item) {
       enqueue(item);
     },
     async flush() {
@@ -188,7 +193,12 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
   const threats = items.filter(
     (i): i is Extract<AttestationItem, { kind: 'threat' }> => i.kind === 'threat',
   );
-  process.stderr.write(`vault[attest]: submitting batch scans=${scans.length} threats=${threats.length}\n`);
+  const trades = items.filter(
+    (i): i is Extract<AttestationItem, { kind: 'trade' }> => i.kind === 'trade',
+  );
+  process.stderr.write(
+    `vault[attest]: submitting batch scans=${scans.length} threats=${threats.length} trades=${trades.length}\n`,
+  );
 
   const multiRequests: Array<{
     schema: Hex;
@@ -229,6 +239,25 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
       })),
     });
   }
+
+  // Trade receipts ride the same multiAttest. Skipped (kept off-chain) until a
+  // tradeReceiptSchema is configured, so an operator can enable trade attestation
+  // independently of scan attestation.
+  if (trades.length > 0 && addresses.tradeReceiptSchema) {
+    multiRequests.push({
+      schema: addresses.tradeReceiptSchema,
+      data: trades.map((t) => ({
+        recipient: ZERO_ADDR,
+        expirationTime: 0n,
+        revocable: false,
+        refUID: ZERO_BYTES32,
+        data: encodeTradeReceipt(t.payload),
+        value: 0n,
+      })),
+    });
+  }
+
+  if (multiRequests.length === 0) return { txHash: ZERO_BYTES32, uids: [] };
 
   const { wallet, pub } = await getClients(addresses, rpcUrl, pk);
   const hash = await wallet.writeContract({

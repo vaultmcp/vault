@@ -88,6 +88,27 @@ of hammering the guard); and `MARKET_HOURS` refuses trades when the market is cl
 trade guard composes with the generic capability firewall — both run on every `tools/call`
 and the stronger decision (block > warn > allow) wins.
 
+### Guarded-trade receipts + tool reputation
+
+Every trading action the guard evaluates can produce a signed, verifiable on-chain
+**trade receipt** (EAS on Base, alongside the existing scan/threat attestations): what
+server, what tool, cleared or blocked, and the reason code. Receipts are privacy-preserving
+— the recipient is hashed (sha256) and the amount is bucketed to an order of magnitude — so
+a receipt proves *what happened* without publishing the wallet or the size.
+
+From a stream of receipts, `aggregateToolReputation()` derives a public **safety record per
+tool**: how many trades it has had cleared vs blocked, the block rate, a 0–1000 score (same
+model as the on-chain `VaultReputation`), and the most common block reason. That turns "my
+agent runs Vault" into something a user or counterparty can verify rather than trust.
+
+Off by default and independent of scan attestation: trade receipts are only emitted when
+`VAULT_ATTEST` is on **and** `VAULT_TRADE_RECEIPT_SCHEMA` (the registered EAS schema UID) is
+set. Until then the guard runs exactly as before and nothing is written on-chain.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VAULT_TRADE_RECEIPT_SCHEMA` | unset | Registered EAS schema UID for trade receipts. Unset = trade attestation off. |
+
 ## Threats Vault does NOT defend against
 
 Pulled from `LIMITATIONS.md`. Each item references the section there for

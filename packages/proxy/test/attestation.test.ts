@@ -204,6 +204,33 @@ describe('createAttestationClient', () => {
     await client.shutdown();
     expect(submit).toHaveBeenCalledTimes(1);
   });
+
+  it('batches an enqueued trade receipt through submit', async () => {
+    const submit = vi.fn(async () => ({ txHash: ZERO_BYTES32 as Hex, uids: [] }));
+    const client = createAttestationClient({
+      config: baseConfig({ batchSize: 1 }),
+      submitFn: submit as unknown as SubmitFn,
+    });
+    client.enqueueTradeReceipt({
+      kind: 'trade',
+      localId: 't1',
+      payload: {
+        mcpServerUrl: 'stdio:rh-trade',
+        toolName: 'execute_swap',
+        decision: 2,
+        reasonCode: 1,
+        recipientHash: ZERO_BYTES32,
+        token: 'WETH',
+        valueBucket: 4,
+        guardedAt: 1n,
+      },
+    });
+    await client.flush();
+    expect(submit).toHaveBeenCalledTimes(1);
+    const items = submit.mock.calls[0]![1] as AttestationItem[];
+    expect(items).toHaveLength(1);
+    expect(items[0]!.kind).toBe('trade');
+  });
 });
 
 describe('createScanReporter', () => {

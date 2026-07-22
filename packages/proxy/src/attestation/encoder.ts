@@ -6,7 +6,7 @@
 ///                   bytes32 receiptRefUID,uint64 detectedAt"
 
 import { encodeAbiParameters, type Hex } from 'viem';
-import type { ScanReceiptPayload, ThreatRecordPayload } from './types.js';
+import type { ScanReceiptPayload, ThreatRecordPayload, TradeReceiptPayload } from './types.js';
 
 const SCAN_PARAMS = [
   { type: 'bytes32', name: 'contentHash' },
@@ -26,6 +26,19 @@ const THREAT_PARAMS = [
   { type: 'string', name: 'category' },
   { type: 'bytes32', name: 'receiptRefUID' },
   { type: 'uint64', name: 'detectedAt' },
+] as const;
+
+// TradeReceipt: "string mcpServerUrl,string toolName,uint8 decision,uint8 reasonCode,
+//                bytes32 recipientHash,string token,uint8 valueBucket,uint64 guardedAt"
+const TRADE_PARAMS = [
+  { type: 'string', name: 'mcpServerUrl' },
+  { type: 'string', name: 'toolName' },
+  { type: 'uint8', name: 'decision' },
+  { type: 'uint8', name: 'reasonCode' },
+  { type: 'bytes32', name: 'recipientHash' },
+  { type: 'string', name: 'token' },
+  { type: 'uint8', name: 'valueBucket' },
+  { type: 'uint64', name: 'guardedAt' },
 ] as const;
 
 export function encodeScanReceipt(p: ScanReceiptPayload): Hex {
@@ -49,5 +62,18 @@ export function encodeThreatRecord(p: ThreatRecordPayload): Hex {
     p.category,
     p.receiptRefUID,
     p.detectedAt,
+  ]);
+}
+
+export function encodeTradeReceipt(p: TradeReceiptPayload): Hex {
+  return encodeAbiParameters(TRADE_PARAMS, [
+    p.mcpServerUrl,
+    p.toolName,
+    p.decision,
+    p.reasonCode,
+    p.recipientHash,
+    p.token,
+    p.valueBucket,
+    p.guardedAt,
   ]);
 }

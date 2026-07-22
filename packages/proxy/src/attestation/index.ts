@@ -16,7 +16,21 @@ export {
 export {
   encodeScanReceipt,
   encodeThreatRecord,
+  encodeTradeReceipt,
 } from './encoder.js';
+
+export {
+  buildTradeReceipt,
+  emitTradeReceipt,
+  aggregateToolReputation,
+  classifyReason,
+  DECISION,
+  REASON_CODES,
+  type TradeReceiptInput,
+  type TradeReceiptSink,
+  type ToolReputation,
+  type ReceiptLike,
+} from './trade-receipt.js';
 
 export type {
   AttestationAddresses,
@@ -24,4 +38,5 @@ export type {
   AttestationItem,
   ScanReceiptPayload,
   ThreatRecordPayload,
+  TradeReceiptPayload,
 } from './types.js';

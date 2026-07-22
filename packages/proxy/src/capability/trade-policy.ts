@@ -100,15 +100,15 @@ export class TradeRateState {
   }
 }
 
-type TradeKind = 'swap' | 'approve' | null;
+export type TradeKind = 'swap' | 'approve' | null;
 
-function classifyTrade(name: string, config: TradePolicyConfig): TradeKind {
+export function classifyTrade(name: string, config: TradePolicyConfig): TradeKind {
   if (config.approvePatterns.some((re) => re.test(name))) return 'approve';
   if (config.swapPatterns.some((re) => re.test(name))) return 'swap';
   return null;
 }
 
-function extractRecipient(args: unknown, keys: string[]): string | null {
+export function extractRecipient(args: unknown, keys: string[]): string | null {
   if (args == null || typeof args !== 'object') return null;
   const obj = args as Record<string, unknown>;
   for (const k of keys) {
@@ -118,7 +118,7 @@ function extractRecipient(args: unknown, keys: string[]): string | null {
   return null;
 }
 
-function extractToken(args: unknown, keys: string[]): string {
+export function extractToken(args: unknown, keys: string[]): string {
   if (args == null || typeof args !== 'object') return '';
   const obj = args as Record<string, unknown>;
   for (const k of keys) {
@@ -128,7 +128,7 @@ function extractToken(args: unknown, keys: string[]): string {
   return '';
 }
 
-function extractAmount(args: unknown, keys: string[]): bigint | null {
+export function extractAmount(args: unknown, keys: string[]): bigint | null {
   if (args == null || typeof args !== 'object') return null;
   const obj = args as Record<string, unknown>;
   for (const k of keys) {
