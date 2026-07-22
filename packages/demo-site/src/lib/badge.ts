@@ -41,6 +41,38 @@ function textWidth(s: string): number {
   return Math.ceil(w);
 }
 
+/// "guarded on robinhood chain | N guarded" badge, fed by the on-chain TradeReceiptLedger.
+/// Same two-part shields.io style; green when there's on-chain activity, grey otherwise.
+export function renderRhBadgeSVG(guarded: number): string {
+  const label = 'guarded on robinhood chain';
+  const value = guarded > 0 ? `${guarded} guarded` : 'live';
+  const hex = guarded > 0 ? '#3fbf6f' : '#9aa1a8';
+
+  const PAD = 6;
+  const HEIGHT = 20;
+  const labelWidth = textWidth(label) + PAD * 2;
+  const valueWidth = textWidth(value) + PAD * 2;
+  const totalWidth = labelWidth + valueWidth;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${HEIGHT}" role="img" aria-label="guarded on robinhood chain: ${value}">
+  <title>guarded on robinhood chain: ${value}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#fff" stop-opacity=".15"/>
+    <stop offset="1" stop-opacity=".15"/>
+  </linearGradient>
+  <mask id="m"><rect width="${totalWidth}" height="${HEIGHT}" rx="3" fill="#fff"/></mask>
+  <g mask="url(#m)">
+    <rect width="${labelWidth}" height="${HEIGHT}" fill="#1f2328"/>
+    <rect x="${labelWidth}" width="${valueWidth}" height="${HEIGHT}" fill="${hex}"/>
+    <rect width="${totalWidth}" height="${HEIGHT}" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="${labelWidth / 2}" y="14">${label}</text>
+    <text x="${labelWidth + valueWidth / 2}" y="14">${value}</text>
+  </g>
+</svg>`;
+}
+
 export function renderBadgeSVG(input: BadgeInput): string {
   const label = 'vault';
   const value = badgeValueText(input.score, input.totalScans);

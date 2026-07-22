@@ -104,7 +104,34 @@ export function RobinhoodBoard() {
             )}
           </div>
         </div>
+
+        {/* Embeddable, on-chain-linked badge */}
+        <div className="mt-10">
+          <h3 className="text-xs uppercase tracking-widish text-dim">put it on your repo</h3>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-dim">
+            Prove your agent is guarded, backed by the ledger on-chain, not a claim. The badge links
+            straight to the contract on Robinhood Chain so anyone can verify it.
+          </p>
+          <div className="mt-4 flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/badge/robinhood.svg" alt="Guarded on Robinhood Chain" height={20} />
+            <a
+              href={data?.explorer ?? `https://robinhoodchain.blockscout.com/address/${BADGE_CONTRACT}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-accent transition-colors hover:opacity-80"
+            >
+              verify on-chain →
+            </a>
+          </div>
+          <pre className="mt-4 overflow-x-auto rounded-md border border-line bg-panel px-4 py-3 font-mono text-xs text-dim">
+            <code className="break-all text-ink">{BADGE_MARKDOWN}</code>
+          </pre>
+        </div>
       </div>
     </section>
   );
 }
+
+const BADGE_CONTRACT = '0x89bf75bccea833fff371fa300f7c885b5c23f103';
+const BADGE_MARKDOWN = `[![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood.svg)](https://robinhoodchain.blockscout.com/address/${BADGE_CONTRACT})`;
