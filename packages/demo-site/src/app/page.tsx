@@ -1,4 +1,5 @@
 import { AnnounceBar } from '@/components/AnnounceBar';
+import { CABar } from '@/components/CABar';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { WhyVault } from '@/components/WhyVault';
@@ -19,6 +20,7 @@ export default function Page() {
   const collectorUrl = '/api';
   return (
     <>
+      <CABar />
       <AnnounceBar />
       <Header />
       <main>
