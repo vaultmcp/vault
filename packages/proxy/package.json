@@ -16,7 +16,8 @@
     "mcp-proxy": "dist/index.js",
     "vault-audit": "dist/audit-view.js",
     "vault-check": "dist/check.js",
-    "vault-init": "dist/init.js"
+    "vault-init": "dist/init.js",
+    "vault-decide": "dist/decide.js"
   },
   "files": [
     "dist"
