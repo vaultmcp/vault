@@ -206,6 +206,10 @@ function loadTradePolicyConfig(): TradePolicyConfig {
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean),
   );
+  // How to treat an unknown (non-allowlisted, non-tainted) payee. Default 'block' preserves
+  // existing behavior; 'warn' stops over-blocking legitimate first-time payees.
+  const allowlistMode: CapabilityMode =
+    process.env.VAULT_TRADE_ALLOWLIST_MODE?.toLowerCase() === 'warn' ? 'warn' : 'block';
 
   const swapPatterns = compilePatterns(process.env.VAULT_TRADE_SWAP_TOOLS, [
     /swap/i,
@@ -271,6 +275,7 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     enabled,
     mode,
     recipientAllowlist,
+    allowlistMode,
     swapPatterns,
     approvePatterns,
     recipientKeys,

@@ -22,6 +22,12 @@ export interface TradePolicyConfig {
   mode: 'block' | 'warn';
   /** Lowercased addresses a swap recipient / approval spender may be. Empty = allow any. */
   recipientAllowlist: Set<string>;
+  /**
+   * What to do with a recipient that isn't allowlisted but ALSO isn't tainted (an unknown
+   * first-time payee). 'block' = strict. 'warn' = flag it but let it through, which avoids
+   * over-blocking legitimate new payees. Tainted recipients always hard-block regardless.
+   */
+  allowlistMode: 'block' | 'warn';
   /** Tool-name patterns that denote a swap / transfer action. */
   swapPatterns: RegExp[];
   /** Tool-name patterns that denote an approval / allowance action. */
@@ -191,53 +197,72 @@ export function decideTradePolicy(
 
   const amount = extractAmount(args, config.amountKeys);
   const token = extractToken(args, config.tokenKeys);
-  const reasons: string[] = [];
+  const hardReasons: string[] = [];
   let taintSources: GateDecision['taintSources'];
+  let allowlistMiss = false;
 
-  // 3. Recipient allowlist + taint.
+  // 3. Recipient checks. Taint (the recipient came from a tool response) is the real
+  //    injection signal and always hard-blocks. A plain unknown payee is softer — it's
+  //    tracked separately and handled per allowlistMode after the hard checks.
   const recipient = extractRecipient(args, config.recipientKeys);
   const allowlisted = recipient ? config.recipientAllowlist.has(recipient.toLowerCase()) : false;
   if (recipient && !allowlisted) {
-    if (config.recipientAllowlist.size > 0) reasons.push(`recipient '${recipient}' is not in the trade allowlist`);
     const hits = taint.matches(recipient, Math.min(recipient.length, 20));
     if (hits.length > 0) {
-      reasons.push('recipient was sourced from an untrusted tool response (tainted)');
+      hardReasons.push('recipient was sourced from an untrusted tool response (tainted)');
       taintSources = hits;
     }
+    if (config.recipientAllowlist.size > 0) allowlistMiss = true;
   }
 
-  // 4. Amount / exposure limits.
+  // 4. Amount / exposure limits — all hard.
   if (kind === 'approve' && !allowlisted && amount !== null && amount >= config.maxApproval) {
-    reasons.push(`unlimited approval (${amount}) to a non-allowlisted spender`);
+    hardReasons.push(`unlimited approval (${amount}) to a non-allowlisted spender`);
   }
   if (kind === 'swap' && config.maxTradeValue !== null && amount !== null && amount >= config.maxTradeValue) {
-    reasons.push(`trade amount ${amount} is at or above the per-trade cap ${config.maxTradeValue}`);
+    hardReasons.push(`trade amount ${amount} is at or above the per-trade cap ${config.maxTradeValue}`);
   }
   if (kind === 'swap' && config.maxValuePerWindow !== null && rate && amount !== null) {
     const used = rate.valueInWindow(now, config.windowMs);
     if (used + amount > config.maxValuePerWindow) {
-      reasons.push(`would move ${used + amount} in ${config.windowMs}ms, over the per-window cap ${config.maxValuePerWindow}`);
+      hardReasons.push(`would move ${used + amount} in ${config.windowMs}ms, over the per-window cap ${config.maxValuePerWindow}`);
     }
   }
   if (kind === 'swap' && config.maxValuePerToken !== null && rate && amount !== null && token) {
     const used = rate.valueInWindowForToken(now, config.windowMs, token);
     if (used + amount > config.maxValuePerToken) {
-      reasons.push(`would move ${used + amount} into ${token}, over the per-token cap ${config.maxValuePerToken}`);
+      hardReasons.push(`would move ${used + amount} into ${token}, over the per-token cap ${config.maxValuePerToken}`);
     }
   }
 
-  if (reasons.length > 0) {
+  if (hardReasons.length > 0) {
     rate?.noteBlock(now);
-    return block(config.mode, kind, reasons.join('; '), taintSources);
+    return block(config.mode, kind, hardReasons.join('; '), taintSources);
   }
 
-  // 5. Velocity (count) limit.
+  // 5. Velocity (count) limit — hard.
   if (config.maxPerWindow !== null && rate) {
     const count = rate.countInWindow(now, config.windowMs);
     if (count >= config.maxPerWindow) {
       rate.noteBlock(now);
       return block(config.mode, kind, `trade rate limit exceeded (${count} in ${config.windowMs}ms, max ${config.maxPerWindow})`);
     }
+  }
+
+  // 6. Unknown payee (allowlist-miss, not tainted). Block in strict mode; otherwise warn and
+  //    let it through — a legitimate first-time payee shouldn't be a hard failure.
+  if (allowlistMiss) {
+    const reason = `recipient '${recipient}' is not in the trade allowlist`;
+    if (config.allowlistMode === 'block') {
+      rate?.noteBlock(now);
+      return block(config.mode, kind, reason);
+    }
+    // warn: flag but proceed; it still counts as a completed trade for the windowed limits.
+    if (rate) {
+      rate.record(now, amount ?? 0n, token);
+      rate.noteAllow();
+    }
+    return { action: 'warn', reason: `trade-policy: ${reason}`, matchedPattern: `trade:${kind}` };
   }
 
   // Allowed: record it for the windowed limits and reset the breaker.
