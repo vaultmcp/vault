@@ -1,8 +1,10 @@
-/// GET /badge/robinhood.svg — "guarded on robinhood chain | N guarded" badge for READMEs.
+/// GET /badge/robinhood — "guarded on robinhood chain | N guarded" badge for READMEs.
+/// (No .svg extension — that would fall through to the dynamic /badge/[server] route.
+/// GitHub renders by content-type, so the extensionless URL embeds fine.)
 ///
 /// Reads the on-chain TradeReceiptLedger and renders a shields.io-style SVG. Embed it linked
 /// to the ledger on the RH explorer so the badge is verifiable, e.g.:
-///   [![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood.svg)](https://robinhoodchain.blockscout.com/address/0x89bf75bccea833fff371fa300f7c885b5c23f103)
+///   [![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood)](https://robinhoodchain.blockscout.com/address/0x89bf75bccea833fff371fa300f7c885b5c23f103)
 
 import { readRhLedger } from '@/lib/chain';
 import { renderRhBadgeSVG } from '@/lib/badge';

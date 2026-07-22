@@ -114,7 +114,7 @@ export function RobinhoodBoard() {
           </p>
           <div className="mt-4 flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/badge/robinhood.svg" alt="Guarded on Robinhood Chain" height={20} />
+            <img src="/badge/robinhood" alt="Guarded on Robinhood Chain" height={20} />
             <a
               href={data?.explorer ?? `https://robinhoodchain.blockscout.com/address/${BADGE_CONTRACT}`}
               target="_blank"
@@ -134,4 +134,4 @@ export function RobinhoodBoard() {
 }
 
 const BADGE_CONTRACT = '0x89bf75bccea833fff371fa300f7c885b5c23f103';
-const BADGE_MARKDOWN = `[![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood.svg)](https://robinhoodchain.blockscout.com/address/${BADGE_CONTRACT})`;
+const BADGE_MARKDOWN = `[![Guarded on Robinhood Chain](https://vaultmcp.io/badge/robinhood)](https://robinhoodchain.blockscout.com/address/${BADGE_CONTRACT})`;
