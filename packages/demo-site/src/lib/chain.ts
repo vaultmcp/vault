@@ -3,7 +3,7 @@
 /// Designed for the Vercel edge runtime: pure viem, no fs / native, no top-level await.
 /// All public reads are cacheable — 60s for score/leaderboard, 30s for the threat feed.
 
-import { createPublicClient, http, parseAbi, type Hex, type Log, decodeEventLog } from 'viem';
+import { createPublicClient, defineChain, http, parseAbi, type Hex, type Log, decodeEventLog } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import deployments from '@vaultmcp/contracts/deployments.json' assert { type: 'json' };
 
@@ -232,4 +232,84 @@ export async function readRecentThreats(
       basescanUrl: l.transactionHash ? `${explorerUrl(network)}/tx/${l.transactionHash}` : '',
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Robinhood Chain — guarded-trade receipts ledger (TradeReceiptLedger).
+// The trading product runs on RH Chain, so guarded-trade receipts land there, not
+// on Base/EAS. This reads the on-chain per-tool safety record for the public board.
+// ---------------------------------------------------------------------------
+
+const RH_LEDGER_ABI = parseAbi([
+  'function toolCount() view returns (uint256)',
+  'function toolAt(uint256 i) view returns (string toolName, uint64 total, uint64 blocked, uint16 score)',
+]);
+
+const robinhoodChain = defineChain({
+  id: 4663,
+  name: 'Robinhood Chain',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.mainnet.chain.robinhood.com'] } },
+});
+
+const RH_EXPLORER = 'https://robinhoodchain.blockscout.com';
+
+export function rhLedgerAddress(): string | undefined {
+  const d = (deployments as Record<string, { tradeReceiptLedger?: string } | undefined>)['robinhood-chain'];
+  return d?.tradeReceiptLedger;
+}
+
+export interface RhToolRow {
+  toolName: string;
+  total: number;
+  blocked: number;
+  cleared: number;
+  score: number; // 0..1000
+}
+export interface RhLedgerData {
+  contract: string;
+  totalGuarded: number;
+  totalBlocked: number;
+  tools: RhToolRow[];
+  explorer: string;
+  lastUpdated: string;
+}
+
+/// Reads the RH TradeReceiptLedger and returns the per-tool safety board. Null if no
+/// ledger is deployed. Sequential reads (tool count is small); cache at the route.
+export async function readRhLedger(): Promise<RhLedgerData | null> {
+  const addr = rhLedgerAddress();
+  if (!addr) return null;
+  const client = createPublicClient({
+    chain: robinhoodChain,
+    transport: http(process.env.VAULT_RH_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0]),
+  });
+  const count = Number(
+    await client.readContract({ address: addr as Hex, abi: RH_LEDGER_ABI, functionName: 'toolCount' }),
+  );
+  const tools: RhToolRow[] = [];
+  let totalGuarded = 0;
+  let totalBlocked = 0;
+  for (let i = 0; i < count; i++) {
+    const [toolName, total, blocked, score] = (await client.readContract({
+      address: addr as Hex,
+      abi: RH_LEDGER_ABI,
+      functionName: 'toolAt',
+      args: [BigInt(i)],
+    })) as [string, bigint, bigint, number];
+    const t = Number(total);
+    const b = Number(blocked);
+    tools.push({ toolName, total: t, blocked: b, cleared: t - b, score: Number(score) });
+    totalGuarded += t;
+    totalBlocked += b;
+  }
+  tools.sort((a, b) => b.total - a.total);
+  return {
+    contract: addr,
+    totalGuarded,
+    totalBlocked,
+    tools,
+    explorer: `${RH_EXPLORER}/address/${addr}`,
+    lastUpdated: new Date().toISOString(),
+  };
 }
