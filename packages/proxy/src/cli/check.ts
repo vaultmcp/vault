@@ -38,6 +38,7 @@ Usage:
   vault check <server>                 check one server (URL or stdio:<cmd>)
   vault check --all                    every server in your MCP config(s)
   vault check <server> --json          machine-readable
+  vault check --tool <name>            guarded-trade safety record for a tool (Robinhood Chain)
   vault check --network base-sepolia   network (default: base-sepolia)
   vault check --rpc-url <url>          override RPC endpoint
   vault check --help, -h               this help
@@ -59,6 +60,7 @@ If no scheme is present, "stdio:" is assumed.
 
 interface ParsedArgs {
   server?: string;
+  tool?: string;
   all: boolean;
   json: boolean;
   network: 'base' | 'base-sepolia';
@@ -77,7 +79,7 @@ export interface CheckResult {
 }
 
 interface Deployments {
-  [network: string]: { vaultReputation?: string; eas?: string };
+  [network: string]: { vaultReputation?: string; eas?: string; tradeReceiptLedger?: string; rpcUrl?: string };
 }
 
 // ---- Parse ---------------------------------------------------------------
@@ -103,6 +105,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
       else throw new Error(`unknown network: ${v} (expected base|base-sepolia)`);
     } else if (a === '--rpc-url') {
       out.rpcUrl = argv[++i];
+    } else if (a === '--tool') {
+      out.tool = argv[++i];
     } else if (a && !a.startsWith('--') && !out.server) {
       out.server = a;
     } else if (a?.startsWith('--')) {
@@ -244,6 +248,67 @@ export async function queryScore(
   return { score: Number(score), scans: Number(totalScans), blocks: Number(totalBlocks) };
 }
 
+// ---- Robinhood Chain tool safety record (TradeReceiptLedger) --------------
+
+const RH_LEDGER_ABI = [
+  {
+    type: 'function',
+    name: 'getToolStats',
+    stateMutability: 'view',
+    inputs: [{ name: 'toolName', type: 'string' }],
+    outputs: [
+      { name: 'total', type: 'uint64' },
+      { name: 'cleared', type: 'uint64' },
+      { name: 'warned', type: 'uint64' },
+      { name: 'blocked', type: 'uint64' },
+      { name: 'score', type: 'uint16' },
+    ],
+  },
+] as const;
+
+const RH_RPC_DEFAULT = 'https://rpc.mainnet.chain.robinhood.com';
+const RH_EXPLORER = 'https://robinhoodchain.blockscout.com';
+
+export interface ToolCheckResult {
+  tool: string;
+  total: number;
+  cleared: number;
+  blocked: number;
+  score: number;
+  explorer: string;
+  interpretation: string;
+}
+
+export async function queryToolStats(
+  toolName: string,
+  ledger: `0x${string}`,
+  rpcUrl: string,
+): Promise<{ total: number; cleared: number; blocked: number; score: number }> {
+  const viem = await import('viem');
+  const chain = viem.defineChain({
+    id: 4663,
+    name: 'Robinhood Chain',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
+  const client = viem.createPublicClient({ chain, transport: viem.http(rpcUrl) });
+  const [total, cleared, , blocked, score] = await client.readContract({
+    address: ledger,
+    abi: RH_LEDGER_ABI,
+    functionName: 'getToolStats',
+    args: [toolName],
+  });
+  return { total: Number(total), cleared: Number(cleared), blocked: Number(blocked), score: Number(score) };
+}
+
+function interpretTool(total: number, blocked: number, score: number): string {
+  if (total === 0) return 'no guarded trades recorded yet for this tool on Robinhood Chain';
+  const rate = ((blocked / total) * 100).toFixed(1);
+  if (score >= 900) return `${total} guarded trades, ${blocked} blocked (${rate}%) — clean record`;
+  if (score >= 500) return `${total} guarded trades, ${blocked} blocked (${rate}%) — some blocks, review`;
+  return `${total} guarded trades, ${blocked} blocked (${rate}%) — high block rate, treat with caution`;
+}
+
 // ---- Format --------------------------------------------------------------
 
 export function scoreColor(score: number, scans: number): (s: string) => string {
@@ -305,13 +370,52 @@ export async function runCheck(argv: string[]): Promise<number> {
     process.stdout.write(HELP);
     return 0;
   }
+  const deployments = loadDeployments();
+
+  // --tool <name>: read the tool's guarded-trade safety record from the RH ledger.
+  if (args.tool) {
+    const ledger = (process.env.VAULT_RH_LEDGER_CONTRACT ??
+      deployments['robinhood-chain']?.tradeReceiptLedger) as `0x${string}` | undefined;
+    if (!ledger) {
+      process.stderr.write('vault check --tool: no TradeReceiptLedger address known (set VAULT_RH_LEDGER_CONTRACT).\n');
+      return 1;
+    }
+    const rhRpc = args.rpcUrl ?? process.env.VAULT_RH_RPC_URL ?? RH_RPC_DEFAULT;
+    try {
+      const s = await queryToolStats(args.tool, ledger, rhRpc);
+      const result: ToolCheckResult = {
+        tool: args.tool,
+        total: s.total,
+        cleared: s.cleared,
+        blocked: s.blocked,
+        score: s.score,
+        explorer: `${RH_EXPLORER}/address/${ledger}`,
+        interpretation: interpretTool(s.total, s.blocked, s.score),
+      };
+      if (args.json) {
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      } else {
+        const tint = scoreColor(result.score, result.total);
+        process.stdout.write(
+          `  ${bold(result.tool.padEnd(28))} ${tint(`score ${result.score}/1000`)}    ` +
+            `${dim(`guarded ${result.total}`)}    ${dim(`blocked ${result.blocked}`)}\n` +
+            `  ${' '.repeat(28)} ${dim(result.interpretation)}\n` +
+            `  ${' '.repeat(28)} ${dim('explorer:')} ${cyan(result.explorer)}\n`,
+        );
+      }
+      return 0;
+    } catch (e) {
+      process.stderr.write(`vault check --tool: query failed: ${(e as Error).message}\n`);
+      return 1;
+    }
+  }
+
   if (!args.server && !args.all) {
-    process.stderr.write('vault check: provide <server> or --all\n');
+    process.stderr.write('vault check: provide <server>, --tool <name>, or --all\n');
     process.stderr.write(HELP);
     return 2;
   }
 
-  const deployments = loadDeployments();
   const net = deployments[args.network];
   const contractAddress = net?.vaultReputation as `0x${string}` | undefined;
   if (!contractAddress) {
