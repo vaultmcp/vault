@@ -28,10 +28,13 @@ import {
 } from '../audit/index.js';
 import {
   createAttestationClient,
+  createRhLedgerClient,
   createScanReporter,
   emitTradeReceipt,
   type AttestationClient,
+  type RhLedgerClient,
   type ScanReporter,
+  type TradeReceiptSink,
 } from '../attestation/index.js';
 import { createScanStore, type ScanStore } from '../persistence/index.js';
 import {
@@ -123,10 +126,18 @@ export function startProxy(cmd: string, args: string[]): void {
   const telemetry: TelemetryReporter = createReporter(config.telemetry);
   const audit: AuditLogger = createAuditLogger(config.audit);
   const attestClient: AttestationClient = createAttestationClient({ config: config.attestation });
+  const rhLedger: RhLedgerClient = createRhLedgerClient({ config: config.rhLedger });
   const scanReporter: ScanReporter = createScanReporter({
     client: attestClient,
     sampleRateL1L2: config.attestation.sampleRateL1L2,
   });
+  // Guarded-trade receipts go to the RH ledger when configured; otherwise Base/EAS if a
+  // trade schema is set. null = trade attestation off.
+  const tradeSink: TradeReceiptSink | null = rhLedger.enabled
+    ? rhLedger
+    : attestClient.enabled && config.attestation.addresses?.tradeReceiptSchema
+      ? attestClient
+      : null;
   const scanStore: ScanStore = createScanStore(config.persistence);
 
   if (scanStore.enabled) {
@@ -181,8 +192,8 @@ export function startProxy(cmd: string, args: string[]): void {
         );
         // Guarded-trade receipt: if this is a trading action and trade attestation is on,
         // emit a signed on-chain receipt of what the guard decided. No-op otherwise.
-        if (attestClient.enabled && config.tradePolicy.enabled && config.attestation.addresses?.tradeReceiptSchema) {
-          emitTradeReceipt(attestClient, config.tradePolicy, serverIdentifier, name, params?.arguments, decision);
+        if (tradeSink && config.tradePolicy.enabled) {
+          emitTradeReceipt(tradeSink, config.tradePolicy, serverIdentifier, name, params?.arguments, decision);
         }
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
@@ -363,6 +374,7 @@ export function startProxy(cmd: string, args: string[]): void {
       void telemetry.shutdown();
       void audit.shutdown();
       void attestClient.shutdown();
+      void rhLedger.shutdown();
       try { scanStore.close(); } catch { /* ignore */ }
       if (!child.killed) child.kill(sig);
     });

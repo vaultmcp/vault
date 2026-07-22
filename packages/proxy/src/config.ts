@@ -2,7 +2,7 @@ import type { CapabilityConfig, CapabilityMode, TradePolicyConfig } from './capa
 import type { ManifestConfig, ManifestMode } from './manifest/index.js';
 import type { TelemetryConfig } from './telemetry/index.js';
 import type { AuditConfig } from './audit/index.js';
-import type { AttestationConfig } from './attestation/index.js';
+import type { AttestationConfig, RhLedgerConfig } from './attestation/index.js';
 import { loadScanStoreConfig, type ScanStoreConfig } from './persistence/index.js';
 import type { Hex } from 'viem';
 
@@ -16,6 +16,7 @@ export interface VaultConfig {
   telemetry: TelemetryConfig;
   audit: AuditConfig;
   attestation: AttestationConfig;
+  rhLedger: RhLedgerConfig;
   persistence: ScanStoreConfig;
 }
 
@@ -30,7 +31,29 @@ export function loadConfig(): VaultConfig {
     telemetry: loadTelemetryConfig(),
     audit: loadAuditConfig(),
     attestation: loadAttestationConfig(),
+    rhLedger: loadRhLedgerConfig(),
     persistence: loadScanStoreConfig(),
+  };
+}
+
+/// Robinhood-Chain trade-receipt ledger. Off until VAULT_RH_LEDGER_CONTRACT is set. The
+/// attester key defaults to the same one used for on-chain writes elsewhere.
+function loadRhLedgerConfig(): RhLedgerConfig {
+  const flag = process.env.VAULT_RH_LEDGER?.toLowerCase();
+  const contract = process.env.VAULT_RH_LEDGER_CONTRACT as Hex | undefined;
+  const privateKey = (process.env.VAULT_RH_ATTESTER_PRIVATE_KEY ?? process.env.VAULT_ATTESTER_PRIVATE_KEY) as
+    | Hex
+    | undefined;
+  const rpcUrl =
+    process.env.VAULT_RH_LEDGER_RPC_URL ?? process.env.RH_CHAIN_RPC_URL ?? 'https://rpc.mainnet.chain.robinhood.com';
+  const chainId = positiveInt(process.env.VAULT_RH_LEDGER_CHAIN_ID ?? process.env.RH_CHAIN_ID, 4663);
+  return {
+    // Enabled when a contract is configured, unless explicitly turned off with VAULT_RH_LEDGER=0.
+    enabled: !!contract && flag !== '0' && flag !== 'false' && flag !== 'off',
+    contract,
+    rpcUrl,
+    chainId,
+    privateKey,
   };
 }
 
