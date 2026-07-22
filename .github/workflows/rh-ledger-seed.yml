@@ -1,0 +1,41 @@
+name: rh-ledger-seed
+
+# Keeps the public "Guarded on Robinhood Chain" board fresh until real guarded-trade traffic
+# exists, by driving a few real guarded trades through the proxy so signed receipts land
+# on-chain. Uses a dedicated, low-funded attester key (not the trading wallet).
+
+on:
+  schedule:
+    - cron: '0 15 * * 1' # weekly, Monday 15:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: rh-ledger-seed
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '10'
+
+jobs:
+  seed:
+    name: seed guarded-trade receipts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build proxy
+        run: pnpm --filter @aimcpvault/mcp-proxy build
+      - name: seed the ledger
+        env:
+          VAULT_RH_ATTESTER_PRIVATE_KEY: ${{ secrets.VAULT_RH_ATTESTER_PRIVATE_KEY }}
+          VAULT_RH_LEDGER_CONTRACT: '0x89bf75bccea833fff371fa300f7c885b5c23f103'
+        run: node packages/rh-trade/scripts/seed-rh-ledger.mjs
