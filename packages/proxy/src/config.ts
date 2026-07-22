@@ -41,9 +41,11 @@ export function loadConfig(): VaultConfig {
 function loadRhLedgerConfig(): RhLedgerConfig {
   const flag = process.env.VAULT_RH_LEDGER?.toLowerCase();
   const contract = process.env.VAULT_RH_LEDGER_CONTRACT as Hex | undefined;
-  const privateKey = (process.env.VAULT_RH_ATTESTER_PRIVATE_KEY ?? process.env.VAULT_ATTESTER_PRIVATE_KEY) as
-    | Hex
-    | undefined;
+  // Normalize the attester key: secrets/env often arrive with stray whitespace or a trailing
+  // newline, which viem's privateKeyToAccount rejects ("invalid private key ... got string").
+  const rawKey = (process.env.VAULT_RH_ATTESTER_PRIVATE_KEY ?? process.env.VAULT_ATTESTER_PRIVATE_KEY)?.trim();
+  const privateKey =
+    rawKey && /^(0x)?[0-9a-fA-F]{64}$/.test(rawKey) ? (`0x${rawKey.replace(/^0x/, '')}` as Hex) : undefined;
   const rpcUrl =
     process.env.VAULT_RH_LEDGER_RPC_URL ?? process.env.RH_CHAIN_RPC_URL ?? 'https://rpc.mainnet.chain.robinhood.com';
   const chainId = positiveInt(process.env.VAULT_RH_LEDGER_CHAIN_ID ?? process.env.RH_CHAIN_ID, 4663);
