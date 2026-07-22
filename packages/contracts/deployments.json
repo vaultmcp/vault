@@ -8,5 +8,11 @@
     },
     "vaultReputation": "0x3A977E4D8BA43367cc41BB4695feFF4615fec189",
     "deployedAt": "2026-05-19T22:56:42.320Z"
+  },
+  "robinhood-chain": {
+    "chainId": 4663,
+    "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+    "tradeReceiptLedger": "0x89bf75bccea833fff371fa300f7c885b5c23f103",
+    "deployedAt": "2026-07-22T04:18:13.325Z"
   }
 }

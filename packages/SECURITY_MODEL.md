@@ -101,13 +101,25 @@ tool**: how many trades it has had cleared vs blocked, the block rate, a 0–100
 model as the on-chain `VaultReputation`), and the most common block reason. That turns "my
 agent runs Vault" into something a user or counterparty can verify rather than trust.
 
-Off by default and independent of scan attestation: trade receipts are only emitted when
-`VAULT_ATTEST` is on **and** `VAULT_TRADE_RECEIPT_SCHEMA` (the registered EAS schema UID) is
-set. Until then the guard runs exactly as before and nothing is written on-chain.
+Trade receipts have two on-chain backends, both off by default:
+
+- **Robinhood Chain (default for the trading product).** The trades execute on RH Chain, so
+  their receipts land there too, in the self-contained `TradeReceiptLedger` contract
+  (`packages/contracts`). RH Chain is an Arbitrum Orbit L2 with no EAS, so an allowlisted
+  attester submits receipts directly. Enabled by setting `VAULT_RH_LEDGER_CONTRACT`.
+- **Base / EAS.** Reuses the same EAS stack as scan/threat attestations, keyed off a
+  registered `TradeReceipt` schema. Enabled with `VAULT_ATTEST` + `VAULT_TRADE_RECEIPT_SCHEMA`.
+
+If an RH ledger is configured it takes precedence; otherwise Base/EAS is used if its schema
+is set; otherwise nothing is written and the guard runs exactly as before.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `VAULT_TRADE_RECEIPT_SCHEMA` | unset | Registered EAS schema UID for trade receipts. Unset = trade attestation off. |
+| `VAULT_RH_LEDGER_CONTRACT` | unset | `TradeReceiptLedger` address on Robinhood Chain. Set = RH trade receipts on. |
+| `VAULT_RH_LEDGER_RPC_URL` | RH mainnet | RPC for the ledger chain (falls back to `RH_CHAIN_RPC_URL`). |
+| `VAULT_RH_LEDGER_CHAIN_ID` | `4663` | Ledger chain id (falls back to `RH_CHAIN_ID`). |
+| `VAULT_RH_ATTESTER_PRIVATE_KEY` | unset | Allowlisted attester key that signs receipt submissions (falls back to `VAULT_ATTESTER_PRIVATE_KEY`). |
+| `VAULT_TRADE_RECEIPT_SCHEMA` | unset | Registered EAS schema UID for the Base/EAS backend. Unset = EAS trade attestation off. |
 
 ## Threats Vault does NOT defend against
 

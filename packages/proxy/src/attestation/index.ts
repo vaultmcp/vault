@@ -32,6 +32,14 @@ export {
   type ReceiptLike,
 } from './trade-receipt.js';
 
+export {
+  createRhLedgerClient,
+  defaultRhSubmit,
+  type RhLedgerClient,
+  type RhLedgerConfig,
+  type RhSubmitFn,
+} from './rh-ledger.js';
+
 export type {
   AttestationAddresses,
   AttestationConfig,

@@ -12,7 +12,8 @@
     "test:gas": "forge test --gas-report",
     "fmt": "forge fmt",
     "register:schemas": "tsx script/register-schemas.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:rh-ledger": "tsx script/deploy-rh-ledger.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

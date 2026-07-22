@@ -27,10 +27,13 @@ import {
 import { createAuditLogger, preview, type AuditLogger } from '../audit/index.js';
 import {
   createAttestationClient,
+  createRhLedgerClient,
   createScanReporter,
   emitTradeReceipt,
   type AttestationClient,
+  type RhLedgerClient,
   type ScanReporter,
+  type TradeReceiptSink,
 } from '../attestation/index.js';
 import { createScanStore, type ScanStore } from '../persistence/index.js';
 import {
@@ -107,6 +110,12 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
   const telemetry: TelemetryReporter = createReporter(config.telemetry);
   const audit: AuditLogger = createAuditLogger(config.audit);
   const attestClient: AttestationClient = createAttestationClient({ config: config.attestation });
+  const rhLedger: RhLedgerClient = createRhLedgerClient({ config: config.rhLedger });
+  const tradeSink: TradeReceiptSink | null = rhLedger.enabled
+    ? rhLedger
+    : attestClient.enabled && config.attestation.addresses?.tradeReceiptSchema
+      ? attestClient
+      : null;
   const scanReporter: ScanReporter = createScanReporter({
     client: attestClient,
     sampleRateL1L2: config.attestation.sampleRateL1L2,
@@ -162,8 +171,8 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
           decideTradePolicy(toolName, toolArgs, taint, config.tradePolicy, tradeRate),
         );
         // Guarded-trade receipt (on-chain), when trade attestation is configured.
-        if (attestClient.enabled && config.tradePolicy.enabled && config.attestation.addresses?.tradeReceiptSchema) {
-          emitTradeReceipt(attestClient, config.tradePolicy, upstreamUrl, toolName, toolArgs, decision);
+        if (tradeSink && config.tradePolicy.enabled) {
+          emitTradeReceipt(tradeSink, config.tradePolicy, upstreamUrl, toolName, toolArgs, decision);
         }
         if (decision.action !== 'allow' && telemetry.enabled) {
           telemetry.send({
@@ -480,6 +489,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
       void telemetry.shutdown();
       void audit.shutdown();
       void attestClient.shutdown();
+      void rhLedger.shutdown();
       try { scanStore.close(); } catch { /* ignore */ }
       server.close(() => process.exit(0));
     });
