@@ -27,6 +27,8 @@ function cfg(over: Partial<TradePolicyConfig> = {}): TradePolicyConfig {
     maxPerWindow: null,
     maxValuePerWindow: null,
     maxValuePerToken: null,
+    elevatedThreshold: null,
+    elevatedFactorPct: 25,
     breakerThreshold: null,
     marketHours: null,
     windowMs: 60_000,
@@ -279,6 +281,51 @@ describe('trade policy — market hours', () => {
     const d = decideTradePolicy('execute_swap', { recipient: USER }, new TaintStore(), c, undefined, at('2026-07-19T15:00:00Z'));
     expect(d.action).toBe('block');
     expect(d.reason).toMatch(/market is closed/);
+  });
+});
+
+describe('trade policy — graduated escalation (OPEN → ELEVATED → LOCKED)', () => {
+  // elevated after 2 consecutive blocks (caps → 25%), locked/breaker after 4.
+  const c = cfg({ elevatedThreshold: 2, elevatedFactorPct: 25, breakerThreshold: 4, maxTradeValue: 1000n, windowMs: 1000 });
+  // ATTACKER is not allowlisted (default allowlistMode 'block') → hard-blocks, driving escalation.
+  const drive = (rate: TradeRateState, n: number) =>
+    decideTradePolicy('execute_swap', { recipient: ATTACKER }, new TaintStore(), c, rate, n);
+
+  it('tightens the per-trade cap once elevated (1000 → 250)', () => {
+    const rate = new TradeRateState();
+    // A 500-value trade is fine while OPEN (under the 1000 cap)...
+    expect(decideTradePolicy('execute_swap', { recipient: USER, amountIn: '500' }, new TaintStore(), c, rate, 0).action).toBe('allow');
+    drive(rate, 1);
+    drive(rate, 2); // → ELEVATED
+    // ...now the same 500 trade is over the shrunk 250 cap.
+    const d = decideTradePolicy('execute_swap', { recipient: USER, amountIn: '500' }, new TaintStore(), c, rate, 3);
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/per-trade cap 250 \[elevated\]/);
+  });
+
+  it('hard-blocks unknown payees when elevated, even in warn mode', () => {
+    const warnC = cfg({ allowlistMode: 'warn', elevatedThreshold: 2, breakerThreshold: 4, windowMs: 1000 });
+    const rate = new TradeRateState();
+    // Drive blocks via a tainted recipient (taint hard-blocks regardless of allowlist mode).
+    const taint = new TaintStore();
+    taint.add({ toolName: 'get_quote', content: `send to ${ATTACKER}`, addedAt: 1 });
+    const badTainted = (n: number) => decideTradePolicy('execute_swap', { recipient: ATTACKER }, taint, warnC, rate, n);
+    // OPEN + warn mode: an unknown, untainted payee only warns.
+    expect(decideTradePolicy('execute_swap', { recipient: '0xNEWPAYEE' }, new TaintStore(), warnC, rate, 0).action).toBe('warn');
+    badTainted(1);
+    badTainted(2); // → ELEVATED
+    const d = decideTradePolicy('execute_swap', { recipient: '0xNEWPAYEE' }, new TaintStore(), warnC, rate, 3);
+    expect(d.action).toBe('block');
+    expect(d.reason).toMatch(/elevated: unknown payees blocked/);
+  });
+
+  it('relaxes back to OPEN after the window passes', () => {
+    const rate = new TradeRateState();
+    drive(rate, 0);
+    drive(rate, 1); // ELEVATED
+    expect(decideTradePolicy('execute_swap', { recipient: USER, amountIn: '500' }, new TaintStore(), c, rate, 2).action).toBe('block'); // 250 cap
+    // after the 1000ms window the blocks age out → OPEN → full 1000 cap.
+    expect(decideTradePolicy('execute_swap', { recipient: USER, amountIn: '500' }, new TaintStore(), c, rate, 1200).action).toBe('allow');
   });
 });
 

@@ -48,7 +48,15 @@ export interface TradePolicyConfig {
   maxValuePerWindow: bigint | null;
   /** Cumulative value that may be moved into a single token within a window. null = no cap. */
   maxValuePerToken: bigint | null;
-  /** Trip the circuit breaker after this many consecutive blocked trades. null = off. */
+  /**
+   * Graduated escalation. After this many consecutive blocked trades (fewer than the
+   * breaker) the guard enters an ELEVATED state: value caps shrink by elevatedFactorPct and
+   * unknown payees are hard-blocked even in warn mode. It relaxes as blocks stop. null = off.
+   */
+  elevatedThreshold: number | null;
+  /** In the ELEVATED state, value caps are scaled to this percent of their configured value. */
+  elevatedFactorPct: number;
+  /** Trip the circuit breaker after this many consecutive blocked trades (the LOCKED state). null = off. */
   breakerThreshold: number | null;
   /** Trading window, UTC minutes-of-day (weekdays only). null = always open. */
   marketHours: { startMin: number; endMin: number } | null;
@@ -189,6 +197,17 @@ export function decideTradePolicy(
     return block(config.mode, kind, `circuit breaker open (>= ${config.breakerThreshold} consecutive blocked trades) — trading halted for the window`);
   }
 
+  // 1b. Graduated escalation. Below the breaker but above the elevated threshold, the guard
+  //     tightens itself: value caps shrink and unknown payees are hard-blocked. The pressure
+  //     is on the PERMISSIONS, not the agent — it relaxes on its own as blocks stop.
+  const elevated =
+    config.elevatedThreshold !== null &&
+    rate != null &&
+    rate.breakerOpen(config.elevatedThreshold, now, config.windowMs);
+  const scaleCap = (v: bigint | null): bigint | null =>
+    v === null ? null : elevated ? (v * BigInt(config.elevatedFactorPct)) / 100n : v;
+  const effAllowlistMode = elevated ? 'block' : config.allowlistMode;
+
   // 2. Market hours — a schedule gate. Blocks but does NOT feed the breaker (a closed
   //    market is expected, not suspicious).
   if (config.marketHours && !withinMarketHours(now, config.marketHours)) {
@@ -219,19 +238,23 @@ export function decideTradePolicy(
   if (kind === 'approve' && !allowlisted && amount !== null && amount >= config.maxApproval) {
     hardReasons.push(`unlimited approval (${amount}) to a non-allowlisted spender`);
   }
-  if (kind === 'swap' && config.maxTradeValue !== null && amount !== null && amount >= config.maxTradeValue) {
-    hardReasons.push(`trade amount ${amount} is at or above the per-trade cap ${config.maxTradeValue}`);
+  const capTag = elevated ? ' [elevated]' : '';
+  const effMaxTradeValue = scaleCap(config.maxTradeValue);
+  if (kind === 'swap' && effMaxTradeValue !== null && amount !== null && amount >= effMaxTradeValue) {
+    hardReasons.push(`trade amount ${amount} is at or above the per-trade cap ${effMaxTradeValue}${capTag}`);
   }
-  if (kind === 'swap' && config.maxValuePerWindow !== null && rate && amount !== null) {
+  const effMaxValuePerWindow = scaleCap(config.maxValuePerWindow);
+  if (kind === 'swap' && effMaxValuePerWindow !== null && rate && amount !== null) {
     const used = rate.valueInWindow(now, config.windowMs);
-    if (used + amount > config.maxValuePerWindow) {
-      hardReasons.push(`would move ${used + amount} in ${config.windowMs}ms, over the per-window cap ${config.maxValuePerWindow}`);
+    if (used + amount > effMaxValuePerWindow) {
+      hardReasons.push(`would move ${used + amount} in ${config.windowMs}ms, over the per-window cap ${effMaxValuePerWindow}${capTag}`);
     }
   }
-  if (kind === 'swap' && config.maxValuePerToken !== null && rate && amount !== null && token) {
+  const effMaxValuePerToken = scaleCap(config.maxValuePerToken);
+  if (kind === 'swap' && effMaxValuePerToken !== null && rate && amount !== null && token) {
     const used = rate.valueInWindowForToken(now, config.windowMs, token);
-    if (used + amount > config.maxValuePerToken) {
-      hardReasons.push(`would move ${used + amount} into ${token}, over the per-token cap ${config.maxValuePerToken}`);
+    if (used + amount > effMaxValuePerToken) {
+      hardReasons.push(`would move ${used + amount} into ${token}, over the per-token cap ${effMaxValuePerToken}${capTag}`);
     }
   }
 
@@ -252,8 +275,8 @@ export function decideTradePolicy(
   // 6. Unknown payee (allowlist-miss, not tainted). Block in strict mode; otherwise warn and
   //    let it through — a legitimate first-time payee shouldn't be a hard failure.
   if (allowlistMiss) {
-    const reason = `recipient '${recipient}' is not in the trade allowlist`;
-    if (config.allowlistMode === 'block') {
+    const reason = `recipient '${recipient}' is not in the trade allowlist${elevated ? ' [elevated: unknown payees blocked]' : ''}`;
+    if (effAllowlistMode === 'block') {
       rate?.noteBlock(now);
       return block(config.mode, kind, reason);
     }

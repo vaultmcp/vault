@@ -76,7 +76,9 @@ Off by default. All are environment variables read at startup.
 | `VAULT_TRADE_MAX_VALUE_PER_WINDOW` | unset | Cumulative value that may be moved within the window across all swaps. The swap that would push the running total over the cap is blocked. Unset = no cap. |
 | `VAULT_TRADE_MAX_VALUE_PER_TOKEN` | unset | Same as above but tracked per token (from `TOKEN_KEYS`), so exposure to any single asset is bounded. Unset = no cap. |
 | `VAULT_TRADE_MAX_PER_WINDOW` | unset | Velocity limit: max trades per window (anti drain-loop). Hard-blocked trades don't consume the budget. Unset = no limit. |
-| `VAULT_TRADE_BREAKER_THRESHOLD` | unset | Circuit breaker: after this many consecutive blocked trades, halt *all* trading until a full quiet window passes. A single allowed trade resets the count. Unset = off. |
+| `VAULT_TRADE_ELEVATED_THRESHOLD` | unset | Graduated escalation. After this many consecutive blocked trades (fewer than the breaker) the guard enters an ELEVATED state: value caps shrink and unknown payees are hard-blocked even in warn mode. Relaxes on its own as blocks stop. Unset = off. |
+| `VAULT_TRADE_ELEVATED_FACTOR_PCT` | `25` | In the ELEVATED state, value caps are scaled to this percent of their configured value (25 = quarter). |
+| `VAULT_TRADE_BREAKER_THRESHOLD` | unset | Circuit breaker (the LOCKED state): after this many consecutive blocked trades, halt *all* trading until a full quiet window passes. A single allowed trade resets the count. Unset = off. |
 | `VAULT_TRADE_MARKET_HOURS` | unset | `HH:MM-HH:MM` (UTC, weekdays only). Trades outside the window — or on weekends — are blocked. For agents holding tokenized stocks that only trade on a schedule. Unset = always open. |
 | `VAULT_TRADE_WINDOW_MS` | `60000` | Rolling window for velocity, cumulative-value, and breaker-cooldown, in milliseconds. |
 
