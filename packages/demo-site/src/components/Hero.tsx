@@ -25,7 +25,9 @@ export function Hero() {
           (95.5%+ lower bound at 95% confidence).{' '}
           <span className="text-ink font-bold">0.0% false positive rate</span> on 100 benign documents.
           <br className="hidden md:block" />
-          {' '}Drop-in proxy — zero config change to your agent or MCP server.
+          {' '}A drop-in proxy that scans every tool response, then guards the action your agent takes
+          with it. A poisoned quote cannot become a bad transaction, and on Robinhood Chain every
+          decision is written on-chain where anyone can verify it.
         </p>
 
         {/* Install */}
@@ -53,8 +55,8 @@ export function Hero() {
           {[
             { label: '100% TPR · 95.5%+ CI', accent: true },
             { label: '0.0% FPR', accent: false },
-            { label: '80 / 80 caught', accent: false },
-            { label: 'L0 · L1 · L2 · L3', accent: false },
+            { label: 'action-layer guard', accent: false },
+            { label: 'on-chain receipts', accent: false },
           ].map(({ label, accent }) => (
             <span
               key={label}
