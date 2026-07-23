@@ -5,6 +5,12 @@ export interface TaintEntry {
   toolName: string;
   content: string;
   addedAt: number;
+  /**
+   * Whether this response came from a source the operator trusts (see VAULT_TRADE_TRUSTED_TOOLS).
+   * A recipient whose only lineage is trusted is legitimate provenance, not an injection, so the
+   * trade guard does not hard-block on it. Undefined/false = untrusted (the safe default).
+   */
+  trusted?: boolean;
 }
 
 export class TaintStore {

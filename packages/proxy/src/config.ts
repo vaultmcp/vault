@@ -245,6 +245,9 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     'asset',
     'ticker',
   ]);
+  // Tool-name patterns whose responses are trusted provenance. Default empty = every source
+  // untrusted (a recipient from any tool-sourced lineage hard-blocks on taint).
+  const trustedTools = compilePatterns(process.env.VAULT_TRADE_TRUSTED_TOOLS, []);
 
   const bigintEnv = (raw: string | undefined, def: bigint | null): bigint | null => {
     if (!raw || !/^\d+$/.test(raw.trim())) return def;
@@ -288,6 +291,7 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     recipientKeys,
     amountKeys,
     tokenKeys,
+    trustedTools,
     maxApproval,
     maxTradeValue,
     maxPerWindow,

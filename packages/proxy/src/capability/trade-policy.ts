@@ -38,6 +38,13 @@ export interface TradePolicyConfig {
   amountKeys: string[];
   /** Argument keys that identify the token being traded (for per-token limits). */
   tokenKeys: string[];
+  /**
+   * Tool-name patterns whose responses are TRUSTED sources. A recipient whose taint lineage is
+   * only trusted tools is treated as legitimate provenance (e.g. an address the agent read from
+   * the user's own account tool), not an injection. Empty = every source is untrusted (the
+   * conservative default; taint on any tool-sourced recipient hard-blocks).
+   */
+  trustedTools: RegExp[];
   /** Approvals at or above this are treated as unlimited. */
   maxApproval: bigint;
   /** Per-trade value ceiling: a swap whose amount is at or above this is blocked. null = no cap. */
@@ -120,6 +127,12 @@ export function classifyTrade(name: string, config: TradePolicyConfig): TradeKin
   if (config.approvePatterns.some((re) => re.test(name))) return 'approve';
   if (config.swapPatterns.some((re) => re.test(name))) return 'swap';
   return null;
+}
+
+/// Whether a tool's responses are a trusted provenance source (see trustedTools). Used by the
+/// transports to tag taint entries so the guard doesn't hard-block on trusted-only lineage.
+export function isTrustedSource(toolName: string, config: TradePolicyConfig): boolean {
+  return config.trustedTools.some((re) => re.test(toolName));
 }
 
 export function extractRecipient(args: unknown, keys: string[]): string | null {
@@ -226,10 +239,14 @@ export function decideTradePolicy(
   const recipient = extractRecipient(args, config.recipientKeys);
   const allowlisted = recipient ? config.recipientAllowlist.has(recipient.toLowerCase()) : false;
   if (recipient && !allowlisted) {
+    // Only an UNTRUSTED source makes a recipient tainted. A recipient whose lineage is entirely
+    // trusted tools is legitimate provenance and does not block (anti over-blocking); any
+    // untrusted lineage still hard-blocks (safe default).
     const hits = taint.matches(recipient, Math.min(recipient.length, 20));
-    if (hits.length > 0) {
+    const untrustedHits = hits.filter((h) => !h.trusted);
+    if (untrustedHits.length > 0) {
       hardReasons.push('recipient was sourced from an untrusted tool response (tainted)');
-      taintSources = hits;
+      taintSources = untrustedHits;
     }
     if (config.recipientAllowlist.size > 0) allowlistMiss = true;
   }
