@@ -5,6 +5,7 @@ import { startProxy } from './transports/stdio.js';
 import { startHttpProxy } from './transports/http.js';
 import { startScanHttp } from './transports/scan-http.js';
 import { runDemo } from './cli/demo.js';
+import { runCheck } from './cli/check.js';
 import { runHistoryCli } from './cli/history.js';
 import { runDashboardCli } from './cli/dashboard.js';
 import { runInspectCli } from './cli/inspect.js';
@@ -32,6 +33,8 @@ const HELP = `vault mcp-proxy — scans MCP tool responses for prompt injection
 
 Usage
   npx @aimcpvault/mcp-proxy demo                                         # interactive demo (30s first-run experience)
+  npx @aimcpvault/mcp-proxy check --tool <name>                         # a tool's guarded-trade record (Robinhood Chain)
+  npx @aimcpvault/mcp-proxy check <server>                              # a server's on-chain reputation
   npx @aimcpvault/mcp-proxy -- <command> [args...]                      # stdio (wrap a local MCP server)
   npx @aimcpvault/mcp-proxy --transport http --upstream <url> [--port]  # http (proxy a remote MCP server)
   npx @aimcpvault/mcp-proxy history [flags]                              # show local scan history (requires VAULT_PERSIST=1)
@@ -189,6 +192,17 @@ function main(): void {
       process.stderr.write(`vault demo: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     });
+    return;
+  }
+
+  // check subcommand — on-chain reputation / guarded-trade lookups.
+  if (argv[0] === 'check') {
+    runCheck(argv.slice(1))
+      .then((code) => process.exit(code))
+      .catch((err) => {
+        process.stderr.write(`vault check: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exit(1);
+      });
     return;
   }
 
