@@ -374,8 +374,11 @@ export async function runCheck(argv: string[]): Promise<number> {
 
   // --tool <name>: read the tool's guarded-trade safety record from the RH ledger.
   if (args.tool) {
+    // Built-in default so `npx ... check --tool` works out of the box (the published package
+    // doesn't bundle deployments.json). Overridable via env or a local deployments.json.
     const ledger = (process.env.VAULT_RH_LEDGER_CONTRACT ??
-      deployments['robinhood-chain']?.tradeReceiptLedger) as `0x${string}` | undefined;
+      deployments['robinhood-chain']?.tradeReceiptLedger ??
+      '0x89bf75bccea833fff371fa300f7c885b5c23f103') as `0x${string}` | undefined;
     if (!ledger) {
       process.stderr.write('vault check --tool: no TradeReceiptLedger address known (set VAULT_RH_LEDGER_CONTRACT).\n');
       return 1;
