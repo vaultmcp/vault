@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://vaultmcp.io'),
   title: 'Vault — MCP prompt-injection proxy',
   description:
-    'Production prompt-injection firewall for MCP. 100% TPR on a public eval (95.5%+ CI lower bound). 0% FPR. Open methodology.',
+    'Production prompt-injection firewall for MCP. 100% TPR on a public eval (95.5%+ CI lower bound), 0% FPR. It also guards the action your agent takes and writes every decision on-chain on Robinhood Chain.',
   openGraph: {
     title: 'VaultMCP — Stop prompt injection in MCP',
     description: '100% detection rate on 80-attack public eval (95.5%+ at 95% confidence). 0.0% FPR on 100 benign documents. Drop-in MCP proxy.',
