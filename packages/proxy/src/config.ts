@@ -268,6 +268,13 @@ function loadTradePolicyConfig(): TradePolicyConfig {
   const breakerThreshold =
     rawBreaker && /^\d+$/.test(rawBreaker.trim()) ? Number.parseInt(rawBreaker.trim(), 10) : null;
 
+  const rawElevated = process.env.VAULT_TRADE_ELEVATED_THRESHOLD;
+  const elevatedThreshold =
+    rawElevated && /^\d+$/.test(rawElevated.trim()) ? Number.parseInt(rawElevated.trim(), 10) : null;
+  const rawFactor = process.env.VAULT_TRADE_ELEVATED_FACTOR_PCT;
+  const elevatedFactorPct =
+    rawFactor && /^\d+$/.test(rawFactor.trim()) ? Math.min(100, Number.parseInt(rawFactor.trim(), 10)) : 25;
+
   const marketHours = parseMarketHours(process.env.VAULT_TRADE_MARKET_HOURS);
   const windowMs = positiveInt(process.env.VAULT_TRADE_WINDOW_MS, 60_000);
 
@@ -286,6 +293,8 @@ function loadTradePolicyConfig(): TradePolicyConfig {
     maxPerWindow,
     maxValuePerWindow,
     maxValuePerToken,
+    elevatedThreshold,
+    elevatedFactorPct,
     breakerThreshold,
     marketHours,
     windowMs,
