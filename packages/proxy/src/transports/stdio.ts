@@ -7,6 +7,7 @@ import {
   TradeRateState,
   decideCapability,
   decideTradePolicy,
+  isTrustedSource,
   mergeDecisions,
   type CapabilityConfig,
 } from '../capability/index.js';
@@ -50,11 +51,12 @@ function addResponseToTaint(
   msg: JsonRpcMessage & { result: ToolCallResult },
   toolName: string,
   taint: TaintStore,
+  trusted: boolean,
 ): void {
   const now = Date.now();
   for (const item of msg.result.content) {
     if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
-      taint.add({ toolName, content: item.text, addedAt: now });
+      taint.add({ toolName, content: item.text, addedAt: now, trusted });
     }
   }
 }
@@ -362,7 +364,7 @@ export function startProxy(cmd: string, args: string[]): void {
           }
         }
         if (config.capability.enabled || config.tradePolicy.enabled)
-          addResponseToTaint(msg, toolName, taint);
+          addResponseToTaint(msg, toolName, taint, isTrustedSource(toolName, config.tradePolicy));
       }
 
       process.stdout.write(JSON.stringify(msg) + '\n');

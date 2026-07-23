@@ -8,4 +8,4 @@ export {
   type GateAction,
   type GateDecision,
 } from './gate.js';
-export { decideTradePolicy, TradeRateState, type TradePolicyConfig } from './trade-policy.js';
+export { decideTradePolicy, isTrustedSource, TradeRateState, type TradePolicyConfig } from './trade-policy.js';

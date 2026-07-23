@@ -12,6 +12,7 @@ import {
   TradeRateState,
   decideCapability,
   decideTradePolicy,
+  isTrustedSource,
   mergeDecisions,
 } from '../capability/index.js';
 import {
@@ -318,7 +319,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
               if (config.capability.enabled || config.tradePolicy.enabled) {
                 for (const item of scannedMsg.result.content) {
                   if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
-                    taint.add({ toolName: scannedTool, content: item.text, addedAt: Date.now() });
+                    taint.add({ toolName: scannedTool, content: item.text, addedAt: Date.now(), trusted: isTrustedSource(scannedTool, config.tradePolicy) });
                   }
                 }
               }
@@ -464,7 +465,7 @@ export function startHttpProxy(opts: HttpProxyOptions): Server {
       if (config.capability.enabled || config.tradePolicy.enabled) {
         for (const item of respMsg.result.content) {
           if (item.type === 'text' && typeof item.text === 'string' && item.text.length > 0) {
-            taint.add({ toolName, content: item.text, addedAt: Date.now() });
+            taint.add({ toolName, content: item.text, addedAt: Date.now(), trusted: isTrustedSource(toolName, config.tradePolicy) });
           }
         }
       }
