@@ -4,6 +4,7 @@ import {
   createScanReporter,
   encodeScanReceipt,
   encodeThreatRecord,
+  resolveThreatRefs,
   type AttestationConfig,
   type AttestationItem,
   type SubmitFn,
@@ -376,5 +377,92 @@ describe('createScanReporter', () => {
     expect(scan.payload.layersRun).toBe(0b010);
     expect(scan.payload.confidence).toBe(91);
     expect(scan.payload.detectedPatterns).toEqual(['x']);
+  });
+
+  // Regression for the reputation double-count: a malicious scan must be recorded as ONE scan and
+  // ONE block, not two scans. VaultReputation.submitThreat only avoids re-counting the scan when the
+  // ThreatRecord's receiptRefUID equals the paired ScanReceipt's real EAS UID. The reporter can't
+  // know that UID yet, so it must emit a *linkable* threat (zero ref + pairedReceiptLocalId), never a
+  // synthetic non-zero ref the contract can never match.
+  it('links the threat to its receipt without inventing a ref the contract cannot match', () => {
+    const client = makeClient();
+    const r = createScanReporter({ client, sampleRateL1L2: 0 });
+    r.report({
+      toolName: 'read_file',
+      mcpServerUrl: 'stdio:fs',
+      contentHash: 'b'.repeat(64),
+      result: { verdict: 'malicious', confidence: 0.92, reasoning: 'r', detectedPatterns: ['p'] },
+      verdict: 'malicious',
+      layer: 1,
+    });
+    const scan = client._enqueued.find((i: any) => i.kind === 'scan') as any;
+    const threat = client._enqueued.find((i: any) => i.kind === 'threat') as any;
+    // Left as a placeholder for the submit layer to fill — NOT a synthetic hash.
+    expect(threat.payload.receiptRefUID).toBe(ZERO_BYTES32);
+    // And carries the pairing hint back to the receipt it was emitted alongside.
+    expect(threat.pairedReceiptLocalId).toBe(scan.localId);
+  });
+});
+
+describe('resolveThreatRefs (reputation double-count fix)', () => {
+  const uidFor = (n: number) => (`0x${String(n).padStart(64, 'e')}`) as Hex;
+
+  function scanItem(localId: string): Extract<AttestationItem, { kind: 'scan' }> {
+    return {
+      kind: 'scan',
+      localId,
+      payload: {
+        contentHash: ZERO_BYTES32,
+        mcpServerUrl: 'stdio:fs',
+        toolName: 't',
+        verdict: 2,
+        confidence: 90,
+        layersRun: 1,
+        detectedPatterns: [],
+        scannedAt: 0n,
+      },
+    };
+  }
+  function threatItem(pairedReceiptLocalId?: string): Extract<AttestationItem, { kind: 'threat' }> {
+    return {
+      kind: 'threat',
+      localId: 'th-' + (pairedReceiptLocalId ?? 'orphan'),
+      pairedReceiptLocalId,
+      payload: {
+        contentHash: ZERO_BYTES32,
+        mcpServerUrl: 'stdio:fs',
+        toolName: 't',
+        category: 'instruction_override',
+        receiptRefUID: ZERO_BYTES32,
+        detectedAt: 0n,
+      },
+    };
+  }
+
+  it('stamps the paired ScanReceipt real UID into the threat so the contract de-dups the scan', () => {
+    const scans = [scanItem('s1'), scanItem('s2')];
+    const scanUids = [uidFor(1), uidFor(2)];
+    const threats = [threatItem('s2')];
+    const [out] = resolveThreatRefs(scans, scanUids, threats);
+    // The threat now points at s2's real submitted UID → submitThreat sees submitted[uid]==true → no
+    // backfill scan → 1 scan (from the receipt) + 1 block, not 2 scans.
+    expect(out.payload.receiptRefUID).toBe(uidFor(2));
+  });
+
+  it('leaves an orphan threat (no paired receipt in the batch) with a zero ref', () => {
+    const scans = [scanItem('s1')];
+    const scanUids = [uidFor(1)];
+    const threats = [threatItem(undefined)];
+    const [out] = resolveThreatRefs(scans, scanUids, threats);
+    // Zero ref → the contract's orphan branch counts it exactly once (1 scan + 1 block), not twice.
+    expect(out.payload.receiptRefUID).toBe(ZERO_BYTES32);
+  });
+
+  it('does not mutate the input threat items', () => {
+    const scans = [scanItem('s1')];
+    const threats = [threatItem('s1')];
+    const out = resolveThreatRefs(scans, [uidFor(1)], threats);
+    expect(threats[0]!.payload.receiptRefUID).toBe(ZERO_BYTES32); // original untouched
+    expect(out[0]!.payload.receiptRefUID).toBe(uidFor(1)); // copy updated
   });
 });

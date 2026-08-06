@@ -182,6 +182,29 @@ async function getClients(addresses: AttestationAddresses, rpcUrl: string, priva
   return cachedClients;
 }
 
+/// Stamp each ThreatRecord with the real EAS UID of the ScanReceipt it was paired with (matched on
+/// `pairedReceiptLocalId`). VaultReputation.submitThreat only skips re-counting the scan when the
+/// threat's `receiptRefUID` equals a ScanReceipt UID that submitReceipt already counted; a threat
+/// left with a zero (or synthetic) ref makes the contract count the same scan a second time, halving
+/// every server's block rate. A threat with no paired receipt in this batch keeps its zero ref — the
+/// contract's orphan branch then counts it exactly once. Pure so it can be unit-tested without chain.
+export function resolveThreatRefs(
+  scans: Array<Extract<AttestationItem, { kind: 'scan' }>>,
+  scanUids: Hex[],
+  threats: Array<Extract<AttestationItem, { kind: 'threat' }>>,
+): Array<Extract<AttestationItem, { kind: 'threat' }>> {
+  const uidByLocalId = new Map<string, Hex>();
+  scans.forEach((s, i) => {
+    const uid = scanUids[i];
+    if (uid) uidByLocalId.set(s.localId, uid);
+  });
+  return threats.map((t) => {
+    const real = t.pairedReceiptLocalId ? uidByLocalId.get(t.pairedReceiptLocalId) : undefined;
+    if (!real) return t;
+    return { ...t, payload: { ...t.payload, receiptRefUID: real } };
+  });
+}
+
 export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
   if (items.length === 0) return { txHash: ZERO_BYTES32, uids: [] };
 
@@ -200,96 +223,76 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
     `vault[attest]: submitting batch scans=${scans.length} threats=${threats.length} trades=${trades.length}\n`,
   );
 
-  const multiRequests: Array<{
-    schema: Hex;
-    data: Array<{
-      recipient: Hex;
-      expirationTime: bigint;
-      revocable: boolean;
-      refUID: Hex;
-      data: Hex;
-      value: bigint;
-    }>;
-  }> = [];
-
-  if (scans.length > 0) {
-    multiRequests.push({
-      schema: addresses.scanReceiptSchema,
-      data: scans.map((s) => ({
-        recipient: ZERO_ADDR,
-        expirationTime: 0n,
-        revocable: false,
-        refUID: ZERO_BYTES32,
-        data: encodeScanReceipt(s.payload),
-        value: 0n,
-      })),
-    });
-  }
-
-  if (threats.length > 0) {
-    multiRequests.push({
-      schema: addresses.threatRecordSchema,
-      data: threats.map((t) => ({
-        recipient: ZERO_ADDR,
-        expirationTime: 0n,
-        revocable: false,
-        refUID: ZERO_BYTES32, // EAS validates refUID exists on-chain; receiptRefUID is in the encoded data
-        data: encodeThreatRecord(t.payload),
-        value: 0n,
-      })),
-    });
-  }
-
-  // Trade receipts ride the same multiAttest. Skipped (kept off-chain) until a
-  // tradeReceiptSchema is configured, so an operator can enable trade attestation
-  // independently of scan attestation.
-  if (trades.length > 0 && addresses.tradeReceiptSchema) {
-    multiRequests.push({
-      schema: addresses.tradeReceiptSchema,
-      data: trades.map((t) => ({
-        recipient: ZERO_ADDR,
-        expirationTime: 0n,
-        revocable: false,
-        refUID: ZERO_BYTES32,
-        data: encodeTradeReceipt(t.payload),
-        value: 0n,
-      })),
-    });
-  }
-
-  if (multiRequests.length === 0) return { txHash: ZERO_BYTES32, uids: [] };
-
   const { wallet, pub } = await getClients(addresses, rpcUrl, pk);
-  const hash = await wallet.writeContract({
-    address: addresses.eas,
-    abi: EAS_ABI,
-    functionName: 'multiAttest',
-    args: [multiRequests],
-  });
-  const receipt = await pub.waitForTransactionReceipt({ hash, confirmations: 2 });
+  const viem = await import('viem');
+  const ATTESTED_TOPIC = viem.keccak256(viem.toHex('Attested(address,address,bytes32,bytes32)'));
 
-  // Parse Attested events to get UIDs, then relay to VaultReputation.
-  process.stderr.write(`vault[attest]: tx=${hash} logs=${receipt.logs.length}\n`);
-  if (addresses.vaultReputation && receipt.logs.length > 0) {
-    const viem = await import('viem');
-    const ATTESTED_TOPIC = viem.keccak256(viem.toHex('Attested(address,address,bytes32,bytes32)'));
+  // Attest one schema group via multiAttest and return the created attestation UIDs, in request order.
+  async function attest(schema: Hex, datas: Hex[]): Promise<{ hash: Hex; uids: Hex[] }> {
+    if (datas.length === 0) return { hash: ZERO_BYTES32, uids: [] };
+    const hash = await wallet.writeContract({
+      address: addresses.eas,
+      abi: EAS_ABI,
+      functionName: 'multiAttest',
+      args: [
+        [
+          {
+            schema,
+            data: datas.map((d) => ({
+              recipient: ZERO_ADDR,
+              expirationTime: 0n,
+              revocable: false,
+              refUID: ZERO_BYTES32,
+              data: d,
+              value: 0n,
+            })),
+          },
+        ],
+      ],
+    });
+    // confirmations:2 so the new attestation is visible to the RPC's gas estimator before we relay.
+    const receipt = await pub.waitForTransactionReceipt({ hash, confirmations: 2 });
+    const uids: Hex[] = [];
+    for (const log of receipt.logs) {
+      if (log.topics[0] !== ATTESTED_TOPIC) continue;
+      if ((log.topics[3] as Hex | undefined) !== schema) continue;
+      uids.push(log.data.slice(0, 66) as Hex); // first 32 bytes of data = uid
+    }
+    process.stderr.write(`vault[attest]: multiAttest tx=${hash} schema=${schema.slice(0, 10)} uids=${uids.length}\n`);
+    return { hash, uids };
+  }
+
+  // Phase 1: attest ScanReceipts first so their real EAS UIDs exist. VaultReputation.submitThreat
+  // dedups the scan counter on the ThreatRecord's receiptRefUID equalling a submitted ScanReceipt
+  // UID, so the paired threats must carry that real UID — which only exists after this tx confirms.
+  const { uids: scanUids } = await attest(
+    addresses.scanReceiptSchema,
+    scans.map((s) => encodeScanReceipt(s.payload)),
+  );
+
+  // Phase 2: stamp each threat with its paired receipt's real UID, then attest threats.
+  const resolvedThreats = resolveThreatRefs(scans, scanUids, threats);
+  const { uids: threatUids } = await attest(
+    addresses.threatRecordSchema,
+    resolvedThreats.map((t) => encodeThreatRecord(t.payload)),
+  );
+
+  // Trade receipts attest independently (kept off-chain until a tradeReceiptSchema is configured)
+  // and are not relayed to VaultReputation.
+  if (trades.length > 0 && addresses.tradeReceiptSchema) {
+    await attest(addresses.tradeReceiptSchema, trades.map((t) => encodeTradeReceipt(t.payload)));
+  }
+
+  // Relay to VaultReputation: receipts first (each counts one scan), then threats (each counts one
+  // block; its paired scan is not re-counted because the receipt's real UID rides in the record).
+  if (addresses.vaultReputation && (scanUids.length > 0 || threatUids.length > 0)) {
     const vrAbi = viem.parseAbi([
       'function submitReceipt(bytes32 uid) external',
       'function submitThreat(bytes32 uid) external',
     ]);
-    const scanUids: Hex[] = [];
-    const threatUids: Hex[] = [];
-    for (const log of receipt.logs) {
-      if (log.topics[0] !== ATTESTED_TOPIC) continue;
-      const schemaUID = log.topics[3] as Hex | undefined;
-      const uid = log.data.slice(0, 66) as Hex; // first 32 bytes of data = uid
-      if (schemaUID === addresses.scanReceiptSchema) scanUids.push(uid);
-      else if (schemaUID === addresses.threatRecordSchema) threatUids.push(uid);
-    }
     process.stderr.write(`vault[attest]: relay scanUids=${scanUids.length} threatUids=${threatUids.length}\n`);
-    // Await each receipt before the next call to avoid nonce collisions on rapid sequential txs.
-    // Check receipt.status explicitly since waitForTransactionReceipt doesn't throw on on-chain revert.
-    // The confirmations:2 wait above ensures the attestation is visible to the RPC's gas estimator.
+    // Await each tx before the next to avoid nonce collisions on rapid sequential txs. Check
+    // receipt.status explicitly since waitForTransactionReceipt doesn't throw on on-chain revert.
     for (const uid of scanUids) {
       try {
         const h = await wallet.writeContract({ address: addresses.vaultReputation, abi: vrAbi, functionName: 'submitReceipt', args: [uid] });
@@ -312,5 +315,5 @@ export const defaultSubmitFn: SubmitFn = async (addresses, items) => {
     }
   }
 
-  return { txHash: hash, uids: [] };
+  return { txHash: ZERO_BYTES32, uids: [] };
 };

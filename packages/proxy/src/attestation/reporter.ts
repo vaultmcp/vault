@@ -4,9 +4,10 @@
 import { randomUUID } from 'node:crypto';
 import type { Hex } from 'viem';
 import type { DetectionResult } from '../detection/types.js';
-import { sha256Hex } from '../telemetry/index.js';
 import type { AttestationClient } from './client.js';
 import type { AttestationItem } from './types.js';
+
+const ZERO_BYTES32 = `0x${'0'.repeat(64)}` as Hex;
 
 export interface ReportInput {
   toolName: string;
@@ -100,19 +101,22 @@ export function createScanReporter(deps: ReporterDeps): ScanReporter {
 
       if (emitThreat) {
         const matchedCategory = input.result?.matchedCategory ?? 'novel';
-        // Pair the threat to the local-id-derived ref hash. The on-chain refUID for the
-        // ScanReceipt isn't known until after the EAS tx confirms, so we use a deterministic
-        // ref-bytes derived from the localId — VaultReputation's idempotent backfill handles this.
-        const refHex = toHex32(sha256Hex(`receipt-ref:${receiptLocalId}`).slice(0, 64));
+        // receiptRefUID must be the paired ScanReceipt's real EAS UID so VaultReputation.submitThreat
+        // recognises the scan as already counted (otherwise the scan is counted twice — once by the
+        // ScanReceipt, once by the threat's backfill). That UID isn't known until the attestation tx
+        // confirms, so leave it zero here and carry `pairedReceiptLocalId`; the submit layer stamps
+        // the real UID in via resolveThreatRefs before the ThreatRecord is submitted. A malicious
+        // verdict always emits a ScanReceipt above (emitReceipt is forced true), so the pair exists.
         const threat: Extract<AttestationItem, { kind: 'threat' }> = {
           kind: 'threat',
           localId: randomUUID(),
+          pairedReceiptLocalId: emitReceipt ? receiptLocalId : undefined,
           payload: {
             contentHash: toHex32(input.contentHash),
             mcpServerUrl: input.mcpServerUrl,
             toolName: input.toolName,
             category: matchedCategory,
-            receiptRefUID: refHex,
+            receiptRefUID: ZERO_BYTES32,
             detectedAt: scannedAt,
           },
         };

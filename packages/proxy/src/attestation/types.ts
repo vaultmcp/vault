@@ -39,7 +39,11 @@ export interface TradeReceiptPayload {
 
 export type AttestationItem =
   | { kind: 'scan'; payload: ScanReceiptPayload; localId: string }
-  | { kind: 'threat'; payload: ThreatRecordPayload; localId: string }
+  // `pairedReceiptLocalId` links a threat to the ScanReceipt emitted for the same scan, so the
+  // submit layer can stamp the receipt's real EAS UID into `payload.receiptRefUID` once the
+  // attestation confirms. VaultReputation.submitThreat needs that real UID to recognise the
+  // scan as already counted; without it the scan is counted twice. See resolveThreatRefs.
+  | { kind: 'threat'; payload: ThreatRecordPayload; localId: string; pairedReceiptLocalId?: string }
   | { kind: 'trade'; payload: TradeReceiptPayload; localId: string };
 
 export interface AttestationAddresses {
