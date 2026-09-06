@@ -1,6 +1,7 @@
 export {
   createAttestationClient,
   defaultSubmitFn,
+  resolveThreatRefs,
   type AttestationClient,
   type CreateAttestationClientOpts,
   type SubmitFn,
